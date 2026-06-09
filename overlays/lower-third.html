@@ -16,6 +16,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1920">
   <title>NGC — Lower Third</title>
+  <script src="/config.js"></script>
   <link rel="stylesheet" href="../css/theme.css">
   <style>
     html, body {
@@ -167,9 +168,9 @@
 
   <!-- Logo bug -->
   <div class="logo-bug">
-    <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+    <img id="ltLogo" src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
          onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-    <div class="logo-bug-fallback" style="display:none">
+    <div id="ltLogoFallback" class="logo-bug-fallback" style="display:none">
       <span>NGC</span>
     </div>
   </div>
@@ -181,7 +182,7 @@
 
   <!-- Right brand bug -->
   <div class="right-brand">
-    <div class="right-brand-name">New Gen Collections</div>
+    <div id="ltBrandName" class="right-brand-name">New Gen Collections</div>
     <div class="right-brand-slogan">Singles &amp; Giveaways</div>
   </div>
 
@@ -191,11 +192,23 @@
   <script src="../js/teams.js"></script>
   <script src="../js/state.js"></script>
   <script>
+    /* ── Apply brand config ──────────────────────────────────────── */
+    (function() {
+      const cfg = window.OVERLAY_CONFIG;
+      if (!cfg) return;
+      const logo = document.getElementById('ltLogo');
+      if (logo) { logo.src = cfg.logoPath; logo.alt = cfg.brandName; }
+      const fallback = document.getElementById('ltLogoFallback');
+      if (fallback) fallback.textContent = cfg.brandShort || cfg.brandName;
+      const brandName = document.getElementById('ltBrandName');
+      if (brandName) brandName.textContent = cfg.brandName;
+    })();
+
+    const _cfg = window.OVERLAY_CONFIG || {};
     const BASE_MESSAGES = [
-      '🔴 LIVE — New Gen Collections',
+      '🔴 LIVE — ' + (_cfg.brandName || 'Live Break'),
       'Singles',
       'Giveaways',
-      'Houston TX',
       '🎴 Sports Card Box Breaks',
     ];
 

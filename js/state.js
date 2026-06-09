@@ -11,18 +11,21 @@
 const STATE_KEY = 'ngc_break_state';
 
 /** Default state factory — returns a fresh break state object. */
-const _defaultState = () => ({
+const _defaultState = () => {
+  const cfg = window.OVERLAY_CONFIG || {};
+  return {
   breakNumber:   1,
   productName:   '2024 Panini Prizm NFL',
-  breakType:     'Pick Your Team',   // 'Pick Your Team' | 'Random' | 'Case Break'
+  breakType:     cfg.defaultBreakType  || 'Pick Your Team',
   currentBox:    1,
   totalBoxes:    1,
   currentPack:   1,
-  totalPacks:    24,
+  totalPacks:    cfg.defaultTotalPacks || 24,
   teams:         typeof getDefaultTeams === 'function' ? getDefaultTeams() : [],
   recentHits:    [],                 // [{ player, team, cardName, value, timestamp }]
   lastUpdated:   Date.now(),
-});
+  };
+};
 
 /* ── WebSocket Bridge ─────────────────────────────────────────────────────── */
 let _ws = null;

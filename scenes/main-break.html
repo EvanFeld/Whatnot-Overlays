@@ -15,6 +15,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1080">
   <title>NGC — Main Break</title>
+  <script src="/config.js"></script>
   <link rel="stylesheet" href="../css/theme.css">
   <style>
     html, body {
@@ -339,9 +340,9 @@
     <!-- Header -->
     <header class="header">
       <div class="header-logo">
-        <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+        <img id="mainLogo" src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
              onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-        <div class="header-logo-fallback" style="display:none">NEW GEN <span>NGC</span></div>
+        <div id="mainLogoFallback" class="header-logo-fallback" style="display:none">NEW GEN <span>NGC</span></div>
       </div>
       <div class="header-center">
         <div class="header-break-num" id="breakNum">BREAK #1</div>
@@ -393,6 +394,17 @@
 
   <script src="../js/teams.js"></script>
   <script src="../js/state.js"></script>
+  <script>
+    /* ── Apply brand config ──────────────────────────────────────── */
+    (function() {
+      const cfg = window.OVERLAY_CONFIG;
+      if (!cfg) return;
+      const logo = document.getElementById('mainLogo');
+      if (logo) { logo.src = cfg.logoPath; logo.alt = cfg.brandName; }
+      const fallback = document.getElementById('mainLogoFallback');
+      if (fallback) fallback.textContent = cfg.brandShort || cfg.brandName;
+    })();
+  </script>
   <script>
     let pendingTeamId = null;
 

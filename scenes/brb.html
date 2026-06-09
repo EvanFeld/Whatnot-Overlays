@@ -14,6 +14,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1080">
   <title>NGC — BRB</title>
+  <script src="/config.js"></script>
   <link rel="stylesheet" href="../css/theme.css">
   <style>
     html, body {
@@ -204,18 +205,18 @@
   <div class="border-frame" aria-hidden="true"></div>
 
   <div class="logo-wrap">
-    <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+    <img id="brbLogo" src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
          onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-    <div class="logo-fallback" style="display:none">NEW GEN <span>NGC</span></div>
+    <div id="brbLogoFallback" class="logo-fallback" style="display:none">NEW GEN <span>NGC</span></div>
   </div>
 
   <h1 class="brb-headline brb-flicker" data-text="BE RIGHT BACK" aria-label="Be Right Back">
     BE RIGHT BACK
   </h1>
 
-  <p class="subtext">New Gen Collections will return shortly</p>
+  <p id="brbSubtext" class="subtext">New Gen Collections will return shortly</p>
 
-  <div class="slogan">You miss 100% of the rips you don't take.</div>
+  <div id="brbSlogan" class="slogan">You miss 100% of the rips you don't take.</div>
 
   <div class="countdown-wrap" id="countdownWrap" style="display:none">
     <div class="countdown-label">Back in</div>
@@ -223,6 +224,21 @@
   </div>
 
   <script src="../js/animations.js"></script>
+  <script>
+    /* ── Apply brand config ──────────────────────────────────────── */
+    (function() {
+      const cfg = window.OVERLAY_CONFIG;
+      if (!cfg) return;
+      const logo = document.getElementById('brbLogo');
+      if (logo) { logo.src = cfg.logoPath; logo.alt = cfg.brandName; }
+      const fallback = document.getElementById('brbLogoFallback');
+      if (fallback) fallback.textContent = cfg.brandShort || cfg.brandName;
+      const subtext = document.getElementById('brbSubtext');
+      if (subtext) subtext.textContent = cfg.brandName + ' will return shortly';
+      const slogan = document.getElementById('brbSlogan');
+      if (slogan) slogan.textContent = cfg.brandSlogan;
+    })();
+  </script>
   <script>
     const params  = new URLSearchParams(window.location.search);
     const cdParam = params.get('countdown');

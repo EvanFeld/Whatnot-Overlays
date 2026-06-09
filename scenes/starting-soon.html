@@ -13,6 +13,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1080">
   <title>NGC — Starting Soon</title>
+  <script src="/config.js"></script>
   <link rel="stylesheet" href="../css/theme.css">
   <style>
     html, body {
@@ -227,9 +228,9 @@
   <div class="accent-line bottom" aria-hidden="true"></div>
 
   <div class="logo-wrap">
-    <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+    <img id="soonLogo" src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
          onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
-    <div class="logo-fallback" style="display:none">NEW GEN<br><span>COLLECTIONS</span></div>
+    <div id="soonLogoFallback" class="logo-fallback" style="display:none">NEW GEN<br><span>COLLECTIONS</span></div>
   </div>
 
   <div class="tagline" aria-label="Be Someone" id="tagline"></div>
@@ -288,9 +289,21 @@
     tick();
     const iv = setInterval(tick, 1000);
 
+    /* Apply brand config */
+    const _cfg = window.OVERLAY_CONFIG;
+    if (_cfg) {
+      const logo = document.getElementById('soonLogo');
+      if (logo) { logo.src = _cfg.logoPath; logo.alt = _cfg.brandName; }
+      const fallback = document.getElementById('soonLogoFallback');
+      if (fallback) fallback.textContent = _cfg.brandShort || _cfg.brandName;
+    }
+
     /* Letter-by-letter slogan reveal — spaces are text nodes so words wrap cleanly */
+    const _slogan = (_cfg && _cfg.brandSlogan)
+      ? _cfg.brandSlogan.toUpperCase().replace(/'/g, '')
+      : 'YOU MISS 100% OF THE RIPS YOU DONT TAKE.';
     const taglineEl = document.getElementById('tagline');
-    'YOU MISS 100% OF THE RIPS YOU DONT TAKE.'.split('').forEach((char, i) => {
+    _slogan.split('').forEach((char, i) => {
       if (char === ' ') {
         taglineEl.appendChild(document.createTextNode(' '));
         return;
