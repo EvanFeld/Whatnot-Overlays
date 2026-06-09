@@ -1,0 +1,397 @@
+<!--
+/**
+ * Scene: Stream Outro
+ * Description: Portrait full-screen ending screen for phone/Whatnot streams.
+ *              Animated entrance, social links, optional stats. Auto-fades to offline.html.
+ * OBS Setup:   1080×1920 Browser Source.
+ * URL Params:  ?nextbreak=Friday+7PM+CT
+ *              ?hits=14
+ *              ?teams=32
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080">
+  <title>NGC — Outro</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    html, body {
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      background: var(--color-dark-bg);
+      position: relative;
+    }
+
+    /* Fade-to-offline overlay */
+    #fadeOverlay {
+      position: absolute;
+      inset: 0;
+      background: #000;
+      opacity: 0;
+      pointer-events: none;
+      z-index: 100;
+      transition: opacity 3s ease;
+    }
+    #fadeOverlay.fading { opacity: 1; }
+
+    #particleLayer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Texas outline watermark */
+    .texas-bg {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 80vw;
+      pointer-events: none;
+      z-index: 0;
+      animation: breathe 8s ease-in-out infinite;
+    }
+    .texas-bg svg {
+      display: block;
+      width: 100%;
+      height: auto;
+      opacity: 0.05;
+      fill: none;
+      stroke: #003087;
+      stroke-width: 1.5;
+      stroke-linejoin: round;
+    }
+
+    .accent-line {
+      position: absolute;
+      left: 0; right: 0;
+      height: 3px;
+      z-index: 2;
+    }
+    .accent-line.top    { top: 0;    background: linear-gradient(90deg, transparent, var(--color-red) 30%, var(--color-blue) 70%, transparent); }
+    .accent-line.bottom { bottom: 0; background: linear-gradient(90deg, transparent, var(--color-blue) 30%, var(--color-red) 70%, transparent); }
+
+    /* ── Content stack ───────────────────────────────────────────── */
+    .content {
+      position: absolute;
+      inset: 0;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 4.5vh;
+      text-align: center;
+      padding: 0 8vw;
+    }
+
+    /* Headline */
+    .headline {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 15vw;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-white);
+      line-height: 0.9;
+      text-shadow: 0 0 8vw rgba(200,16,46,0.4);
+      opacity: 0;
+      transform: scale(0.6);
+    }
+    .headline span { color: var(--color-red); }
+
+    /* Thanks line */
+    .thanks {
+      font-family: var(--font-ui);
+      font-size: 3vw;
+      color: var(--color-text-muted);
+      opacity: 0;
+      transform: translateY(20px);
+    }
+
+    /* Slogan */
+    .slogan {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 6.5vw;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--color-gold);
+      text-shadow: var(--glow-gold);
+      opacity: 0;
+    }
+
+    /* Logo */
+    .logo-wrap {
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    .logo-wrap img {
+      height: 16vh;
+      max-width: 65vw;
+      object-fit: contain;
+      filter: drop-shadow(0 0 3vw rgba(200,16,46,0.4));
+    }
+    .logo-fallback {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 6vw;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-white);
+    }
+    .logo-fallback span { color: var(--color-red); }
+
+    /* Divider */
+    .divider {
+      width: 70vw;
+      height: 2px;
+      background: linear-gradient(90deg, transparent, var(--color-red), var(--color-blue), transparent);
+      opacity: 0;
+    }
+
+    /* Social row */
+    .social-row {
+      display: flex;
+      align-items: center;
+      gap: 6vw;
+      opacity: 0;
+      transform: translateY(16px);
+    }
+    .social-item {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1.5vh;
+    }
+    .social-icon {
+      width: 7vw;
+      height: 7vw;
+      fill: var(--color-white);
+      opacity: 0.8;
+    }
+    .social-handle {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 1.8vw;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-text-muted);
+    }
+    .social-divider {
+      width: 1px;
+      height: 7vh;
+      background: var(--color-border);
+    }
+
+    /* Stats row */
+    .info-row {
+      display: flex;
+      align-items: center;
+      gap: 5vw;
+      opacity: 0;
+      transform: translateY(16px);
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    .info-card {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: 2.5vh 7vw;
+      text-align: center;
+    }
+    .info-card-label {
+      font-family: var(--font-ui);
+      font-size: 1.8vw;
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--color-text-muted);
+      margin-bottom: 1vh;
+    }
+    .info-card-value {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: 5vw;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-white);
+    }
+    .info-card-value.gold { color: var(--color-gold); }
+
+    /* Auto-fade indicator */
+    .fade-indicator {
+      position: absolute;
+      bottom: 3vh;
+      font-family: var(--font-ui);
+      font-size: 2vw;
+      color: rgba(255,255,255,0.2);
+      letter-spacing: 0.1em;
+      z-index: 5;
+    }
+  </style>
+</head>
+<body data-scene="outro">
+
+  <div id="fadeOverlay" aria-hidden="true"></div>
+  <div id="particleLayer" aria-hidden="true"></div>
+
+  <div class="texas-bg" aria-hidden="true">
+    <svg viewBox="0 0 500 430" xmlns="http://www.w3.org/2000/svg">
+      <path d="M 120,10 L 380,10 L 420,80 L 490,120 L 490,200
+               L 450,220 L 460,300 L 400,340 L 380,420 L 280,420
+               L 240,380 L 180,390 L 120,350 L 60,360 L 20,300
+               L 10,200 L 40,140 L 80,100 Z"/>
+    </svg>
+  </div>
+
+  <div class="accent-line top"    aria-hidden="true"></div>
+  <div class="accent-line bottom" aria-hidden="true"></div>
+
+  <main class="content">
+
+    <div class="headline" id="headlineEl">THAT'S A <span>WRAP!</span></div>
+
+    <div class="thanks" id="thanksEl">Thanks for breaking with New Gen Collections</div>
+
+    <div class="slogan" id="sloganEl">You miss 100% of the rips you don't take.</div>
+
+    <div class="logo-wrap" id="logoEl">
+      <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+           onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+      <div class="logo-fallback" style="display:none">NEW GEN <span>NGC</span></div>
+    </div>
+
+    <div class="divider" id="dividerEl"></div>
+
+    <div class="social-row" id="socialEl">
+      <div class="social-item">
+        <svg class="social-icon" viewBox="0 0 24 24" aria-label="Twitch">
+          <path d="M11.571 4.714h1.715v5.143H11.57zm4.715 0H18v5.143h-1.714zM6 0L1.714 4.286v15.428h5.143V24l4.286-4.286h3.428L22.286 12V0zm14.571 11.143l-3.428 3.428h-3.429l-3 3v-3H6.857V1.714h13.714z"/>
+        </svg>
+        <div class="social-handle">@NewGenCollections</div>
+      </div>
+      <div class="social-divider"></div>
+      <div class="social-item">
+        <svg class="social-icon" viewBox="0 0 24 24" aria-label="Instagram">
+          <path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 1 0 0 12.324 6.162 6.162 0 0 0 0-12.324zM12 16a4 4 0 1 1 0-8 4 4 0 0 1 0 8zm6.406-11.845a1.44 1.44 0 1 0 0 2.881 1.44 1.44 0 0 0 0-2.881z"/>
+        </svg>
+        <div class="social-handle">@NewGenCollections</div>
+      </div>
+      <div class="social-divider"></div>
+      <div class="social-item">
+        <svg class="social-icon" viewBox="0 0 24 24" aria-label="YouTube">
+          <path d="M23.495 6.205a3.007 3.007 0 0 0-2.088-2.088c-1.87-.501-9.396-.501-9.396-.501s-7.507-.01-9.396.501A3.007 3.007 0 0 0 .527 6.205a31.247 31.247 0 0 0-.522 5.805 31.247 31.247 0 0 0 .522 5.783 3.007 3.007 0 0 0 2.088 2.088c1.868.502 9.396.502 9.396.502s7.506 0 9.396-.502a3.007 3.007 0 0 0 2.088-2.088 31.247 31.247 0 0 0 .5-5.783 31.247 31.247 0 0 0-.5-5.805zM9.609 15.601V8.408l6.264 3.602z"/>
+        </svg>
+        <div class="social-handle">NewGenCollections</div>
+      </div>
+    </div>
+
+    <div class="info-row" id="infoRow"></div>
+
+  </main>
+
+  <div class="fade-indicator" id="fadeIndicator">
+    Switching to offline in <span id="fadeCountdown">60</span>s
+  </div>
+
+  <script src="../js/animations.js"></script>
+  <script>
+    const params    = new URLSearchParams(window.location.search);
+    const nextBreak = params.get('nextbreak');
+    const hitsCount = params.get('hits');
+    const teamCount = params.get('teams');
+
+    const infoRow = document.getElementById('infoRow');
+    if (nextBreak) infoRow.innerHTML += `
+      <div class="info-card">
+        <div class="info-card-label">Next Break</div>
+        <div class="info-card-value">${nextBreak}</div>
+      </div>`;
+    if (hitsCount) infoRow.innerHTML += `
+      <div class="info-card">
+        <div class="info-card-label">Hits Pulled</div>
+        <div class="info-card-value gold">${hitsCount}</div>
+      </div>`;
+    if (teamCount) infoRow.innerHTML += `
+      <div class="info-card">
+        <div class="info-card-label">Teams Claimed</div>
+        <div class="info-card-value">${teamCount}</div>
+      </div>`;
+
+    const animIn = (el, keyframes, opts) =>
+      el.animate(keyframes, { fill: 'forwards', ...opts }).finished;
+
+    const playEntrance = async () => {
+      const headlineEl = document.getElementById('headlineEl');
+      const thanksEl   = document.getElementById('thanksEl');
+      const sloganEl   = document.getElementById('sloganEl');
+      const logoEl     = document.getElementById('logoEl');
+      const dividerEl  = document.getElementById('dividerEl');
+      const socialEl   = document.getElementById('socialEl');
+
+      await animIn(headlineEl,
+        [{ opacity: 0, transform: 'scale(0.6)' },
+         { opacity: 1, transform: 'scale(1.04)', offset: 0.7 },
+         { opacity: 1, transform: 'scale(1)' }],
+        { duration: 700, easing: 'cubic-bezier(0.34,1.56,0.64,1)' });
+
+      await animIn(thanksEl,
+        [{ opacity: 0, transform: 'translateY(20px)' },
+         { opacity: 1, transform: 'translateY(0)' }],
+        { duration: 500, easing: 'cubic-bezier(0.16,1,0.3,1)' });
+
+      animIn(sloganEl, [{ opacity: 0 }, { opacity: 1 }],
+        { duration: 600, easing: 'ease-out' });
+
+      await NGCAnim.wait(200);
+
+      await animIn(logoEl,
+        [{ opacity: 0, transform: 'translateY(16px)' },
+         { opacity: 1, transform: 'translateY(0)' }],
+        { duration: 500, easing: 'cubic-bezier(0.16,1,0.3,1)' });
+
+      await animIn(dividerEl,
+        [{ opacity: 0, transform: 'scaleX(0)' },
+         { opacity: 1, transform: 'scaleX(1)' }],
+        { duration: 600, easing: 'cubic-bezier(0.16,1,0.3,1)' });
+
+      await animIn(socialEl,
+        [{ opacity: 0, transform: 'translateY(16px)' },
+         { opacity: 1, transform: 'translateY(0)' }],
+        { duration: 500, easing: 'cubic-bezier(0.16,1,0.3,1)' });
+
+      if (infoRow.children.length) {
+        infoRow.animate(
+          [{ opacity: 0, transform: 'translateY(16px)' },
+           { opacity: 1, transform: 'translateY(0)' }],
+          { duration: 500, fill: 'forwards', easing: 'cubic-bezier(0.16,1,0.3,1)' });
+      }
+    };
+
+    let fadeRemaining = 60;
+    const fadeCountdownEl = document.getElementById('fadeCountdown');
+    const fadeOverlay     = document.getElementById('fadeOverlay');
+    const fadeTick = () => {
+      fadeCountdownEl.textContent = fadeRemaining;
+      if (fadeRemaining <= 0) {
+        fadeOverlay.classList.add('fading');
+        clearInterval(fadeInterval);
+        setTimeout(() => {
+          try { window.location.href = 'offline.html'; } catch {}
+        }, 3100);
+      }
+      fadeRemaining--;
+    };
+    fadeTick();
+    const fadeInterval = setInterval(fadeTick, 1000);
+
+    NGCAnim.createParticleSystem(document.getElementById('particleLayer'), 35, 'drift');
+    playEntrance();
+  </script>
+</body>
+</html>

@@ -1,0 +1,258 @@
+<!--
+/**
+ * Scene: Be Right Back Screen
+ * Description: Portrait full-screen holding screen for phone/Whatnot streams.
+ *              Glitch "BE RIGHT BACK" hero text, Texas outline watermark,
+ *              animated border frame, optional countdown.
+ * OBS Setup:   1080×1920 Browser Source.
+ * URL Params:  ?countdown=5 — optional countdown in minutes
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080">
+  <title>NGC — BRB</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    html, body {
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      background: var(--color-dark-bg);
+      position: relative;
+    }
+
+    #particleLayer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* Animated border frame */
+    .border-frame {
+      position: absolute;
+      inset: 3vw;
+      border: 0.4vw solid var(--color-red);
+      border-radius: var(--radius-xl);
+      animation: borderPulse 3s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 1;
+    }
+    @keyframes borderPulse {
+      0%   { border-color: var(--color-red);   box-shadow: 0 0 20px rgba(200,16,46,0.5); }
+      33%  { border-color: var(--color-white); box-shadow: 0 0 20px rgba(255,255,255,0.3); }
+      66%  { border-color: var(--color-blue);  box-shadow: 0 0 20px rgba(0,48,135,0.5); }
+      100% { border-color: var(--color-red);   box-shadow: 0 0 20px rgba(200,16,46,0.5); }
+    }
+
+    /* ── Absolutely positioned elements ──────────────────────────── */
+    .logo-wrap {
+      position: absolute;
+      top: 10%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      animation: fadeDownCentered 0.7s var(--ease-out-expo) both;
+    }
+    .logo-wrap img {
+      height: 14vh;
+      max-width: 30vw;
+      min-width: 140px;
+      object-fit: contain;
+      filter: drop-shadow(0 0 2vw rgba(200,16,46,0.5));
+      display: block;
+    }
+    .logo-fallback {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 4vw;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-white);
+      white-space: nowrap;
+    }
+    .logo-fallback span { color: var(--color-red); }
+
+    /* BRB headline */
+    .brb-headline {
+      position: absolute;
+      top: 30%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 13vw;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-white);
+      line-height: 0.9;
+      white-space: nowrap;
+    }
+    .brb-headline::before,
+    .brb-headline::after {
+      content: attr(data-text);
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+    .brb-headline::before {
+      color: var(--color-red);
+      clip-path: inset(30% 0 50% 0);
+      animation: glitch 3.5s infinite;
+      opacity: 0.75;
+    }
+    .brb-headline::after {
+      color: var(--color-blue);
+      clip-path: inset(60% 0 20% 0);
+      animation: glitch 3.5s 0.4s infinite reverse;
+      opacity: 0.75;
+    }
+    .brb-flicker { animation: flicker 5s linear infinite; }
+
+    /* Subtext */
+    .subtext {
+      position: absolute;
+      top: 42%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      font-family: var(--font-ui);
+      font-size: 2.4vw;
+      color: var(--color-text-muted);
+      letter-spacing: 0.04em;
+      white-space: nowrap;
+      animation: fadeIn 0.8s 0.4s ease both;
+    }
+
+    /* Slogan */
+    .slogan {
+      position: absolute;
+      top: 54%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 3.8vw;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-gold);
+      text-shadow: var(--glow-gold);
+      width: 85%;
+      text-align: center;
+      line-height: 1.35;
+      animation: fadeUpCentered 0.8s 0.7s var(--ease-out-expo) both;
+    }
+
+    /* Countdown */
+    .countdown-wrap {
+      position: absolute;
+      top: 70%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1vh;
+      animation: fadeUpCentered 0.8s 1s var(--ease-out-expo) both;
+    }
+    .countdown-label {
+      font-family: var(--font-ui);
+      font-size: 1.8vw;
+      text-transform: uppercase;
+      letter-spacing: 0.18em;
+      color: var(--color-text-muted);
+      white-space: nowrap;
+    }
+    .countdown-timer {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 14vw;
+      letter-spacing: 0.06em;
+      color: var(--color-white);
+      text-shadow: 0 0 3vw rgba(255,255,255,0.3);
+      line-height: 0.9;
+      font-variant-numeric: tabular-nums;
+    }
+    .countdown-timer.urgent {
+      color: var(--color-red);
+      text-shadow: var(--glow-red);
+      animation: pulseRed 0.8s ease-in-out infinite;
+    }
+
+    /* ── Centering-aware entrance animations ─────────────────────── */
+    @keyframes fadeDownCentered {
+      from { opacity: 0; transform: translate(-50%, calc(-50% - 20px)); }
+      to   { opacity: 1; transform: translate(-50%, -50%); }
+    }
+    @keyframes fadeUpCentered {
+      from { opacity: 0; transform: translate(-50%, calc(-50% + 20px)); }
+      to   { opacity: 1; transform: translate(-50%, -50%); }
+    }
+  </style>
+</head>
+<body data-scene="brb">
+
+  <div id="particleLayer" aria-hidden="true"></div>
+
+  <div class="border-frame" aria-hidden="true"></div>
+
+  <div class="logo-wrap">
+    <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="logo-fallback" style="display:none">NEW GEN <span>NGC</span></div>
+  </div>
+
+  <h1 class="brb-headline brb-flicker" data-text="BE RIGHT BACK" aria-label="Be Right Back">
+    BE RIGHT BACK
+  </h1>
+
+  <p class="subtext">New Gen Collections will return shortly</p>
+
+  <div class="slogan">You miss 100% of the rips you don't take.</div>
+
+  <div class="countdown-wrap" id="countdownWrap" style="display:none">
+    <div class="countdown-label">Back in</div>
+    <div class="countdown-timer" id="countdownTimer">05:00</div>
+  </div>
+
+  <script src="../js/animations.js"></script>
+  <script>
+    const params  = new URLSearchParams(window.location.search);
+    const cdParam = params.get('countdown');
+
+    if (cdParam) {
+      let remaining = parseInt(cdParam, 10) * 60;
+      const wrapEl  = document.getElementById('countdownWrap');
+      const timerEl = document.getElementById('countdownTimer');
+      wrapEl.style.display = '';
+
+      const fmt = s => {
+        const m   = Math.floor(Math.abs(s) / 60).toString().padStart(2, '0');
+        const sec = (Math.abs(s) % 60).toString().padStart(2, '0');
+        return `${m}:${sec}`;
+      };
+      const tick = () => {
+        timerEl.textContent = fmt(remaining);
+        timerEl.classList.toggle('urgent', remaining <= 30 && remaining > 0);
+        if (remaining <= 0) {
+          timerEl.textContent = 'COMING BACK!';
+          timerEl.classList.add('urgent');
+          clearInterval(iv);
+        }
+        remaining--;
+      };
+      tick();
+      const iv = setInterval(tick, 1000);
+    }
+
+    NGCAnim.createParticleSystem(document.getElementById('particleLayer'), 35, 'drift');
+  </script>
+</body>
+</html>

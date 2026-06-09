@@ -1,0 +1,457 @@
+/**
+ * File: /css/theme.css
+ * Description: Shared design system for New Gen Collections overlay suite.
+ *              Defines all CSS custom properties, utility classes, keyframe
+ *              animations, and reusable visual effects used across all scenes.
+ * Brand: New Gen Collections — "Be Someone" — Houston, TX
+ */
+
+/* ─── Google Fonts ─────────────────────────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=Barlow+Condensed:ital,wght@0,400;0,600;0,700;0,800;0,900;1,700&family=Inter:wght@400;500;600;700&display=swap');
+
+/* ─── Design Tokens ─────────────────────────────────────────────────────────── */
+:root {
+  /* Brand Colors */
+  --color-red:        #C8102E;
+  --color-blue:       #003087;
+  --color-white:      #FFFFFF;
+  --color-dark-bg:    #0a0a0f;
+  --color-gold:       #4A9EFF;
+
+  /* Derived / Tonal */
+  --color-red-dim:    #7a0a1b;
+  --color-red-bright: #ff1a3e;
+  --color-blue-dim:   #001a4a;
+  --color-blue-bright:#0047cc;
+  --color-gold-dim:   #1a5ab8;
+  --color-gold-bright:#80c4ff;
+  --color-surface:    #12121a;
+  --color-surface-2:  #1a1a28;
+  --color-border:     rgba(255,255,255,0.08);
+  --color-text-muted: rgba(255,255,255,0.45);
+
+  /* Typography */
+  --font-display:  'Barlow Condensed', 'Arial Narrow', sans-serif;
+  --font-ui:       'Inter', 'Segoe UI', sans-serif;
+
+  /* Font Scale */
+  --text-xs:   0.625rem;   /* 10px */
+  --text-sm:   0.75rem;    /* 12px */
+  --text-base: 0.875rem;   /* 14px */
+  --text-md:   1rem;       /* 16px */
+  --text-lg:   1.25rem;    /* 20px */
+  --text-xl:   1.5rem;     /* 24px */
+  --text-2xl:  2rem;       /* 32px */
+  --text-3xl:  2.5rem;     /* 40px */
+  --text-4xl:  3.5rem;     /* 56px */
+  --text-5xl:  5rem;       /* 80px */
+  --text-6xl:  7rem;       /* 112px */
+
+  /* Spacing */
+  --space-1:  0.25rem;
+  --space-2:  0.5rem;
+  --space-3:  0.75rem;
+  --space-4:  1rem;
+  --space-5:  1.25rem;
+  --space-6:  1.5rem;
+  --space-8:  2rem;
+  --space-10: 2.5rem;
+  --space-12: 3rem;
+  --space-16: 4rem;
+
+  /* Border Radius */
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+  --radius-xl:  20px;
+  --radius-full: 9999px;
+
+  /* Glow Effects */
+  --glow-red:  0 0 12px rgba(200,16,46,0.8),  0 0 40px rgba(200,16,46,0.4);
+  --glow-blue: 0 0 12px rgba(0,48,135,0.9),   0 0 40px rgba(0,48,135,0.5);
+  --glow-gold: 0 0 12px rgba(74,158,255,0.9),  0 0 48px rgba(74,158,255,0.5);
+  --glow-white:0 0 10px rgba(255,255,255,0.6), 0 0 30px rgba(255,255,255,0.2);
+
+  /* Animation Durations */
+  --dur-instant:  80ms;
+  --dur-fast:     200ms;
+  --dur-normal:   400ms;
+  --dur-slow:     700ms;
+  --dur-xslow:    1200ms;
+  --dur-xxslow:   2400ms;
+
+  /* Easing */
+  --ease-out-expo:   cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-back:   cubic-bezier(0.34, 1.56, 0.64, 1);
+  --ease-in-expo:    cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-bounce:     cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* Layout */
+  --sidebar-width:   320px;
+  --topbar-height:   50px;
+  --bottombar-height:60px;
+
+  /* Scanline opacity */
+  --scanline-opacity: 0.03;
+
+  /* Shimmer width */
+  --shimmer-width: 60%;
+}
+
+/* ─── Base Reset ────────────────────────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body {
+  width: 1920px;
+  height: 1080px;
+  overflow: hidden;
+  background: var(--color-dark-bg);
+  color: var(--color-white);
+  font-family: var(--font-ui);
+  font-size: 16px;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* ─── Glow Utility Classes ──────────────────────────────────────────────────── */
+.glow-red  { box-shadow: var(--glow-red);  }
+.glow-blue { box-shadow: var(--glow-blue); }
+.glow-gold { box-shadow: var(--glow-gold); }
+.glow-white{ box-shadow: var(--glow-white);}
+
+.text-glow-red  { text-shadow: 0 0 10px rgba(200,16,46,0.9),  0 0 30px rgba(200,16,46,0.5);  }
+.text-glow-blue { text-shadow: 0 0 10px rgba(0,48,135,0.9),   0 0 30px rgba(0,48,135,0.5);   }
+.text-glow-gold { text-shadow: 0 0 10px rgba(74,158,255,1),   0 0 40px rgba(74,158,255,0.6); }
+.text-glow-white{ text-shadow: 0 0 8px  rgba(255,255,255,0.9),0 0 20px rgba(255,255,255,0.4);}
+
+/* ─── Scanline Overlay ──────────────────────────────────────────────────────── */
+.scanline {
+  position: relative;
+}
+.scanline::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: repeating-linear-gradient(
+    to bottom,
+    transparent 0px,
+    transparent 3px,
+    rgba(0,0,0,var(--scanline-opacity)) 3px,
+    rgba(0,0,0,var(--scanline-opacity)) 4px
+  );
+  z-index: 9998;
+}
+
+/* ─── Shimmer Animation ─────────────────────────────────────────────────────── */
+@keyframes shimmer {
+  0%   { background-position: -200% center; }
+  100% { background-position:  200% center; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    105deg,
+    transparent 35%,
+    rgba(255,255,255,0.55) 50%,
+    transparent 65%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.4s var(--ease-out-expo) infinite;
+}
+
+.shimmer-gold {
+  background: linear-gradient(
+    105deg,
+    rgba(74,158,255,0.1) 20%,
+    rgba(128,196,255,0.7) 50%,
+    rgba(74,158,255,0.1) 80%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2s linear infinite;
+}
+
+/* ─── Texas Diagonal Stripe Pattern ─────────────────────────────────────────── */
+/* Use as a background-image on sidebar/bars for Texas pride energy */
+.texas-stripe {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 18px,
+    rgba(200, 16, 46, 0.06) 18px,
+    rgba(200, 16, 46, 0.06) 20px,
+    transparent 20px,
+    transparent 38px,
+    rgba(0, 48, 135, 0.06) 38px,
+    rgba(0, 48, 135, 0.06) 40px
+  );
+}
+
+/* ─── Animated Texas Stripe (sidebar pulse) ─────────────────────────────────── */
+@keyframes stripeScroll {
+  from { background-position: 0 0;    }
+  to   { background-position: 80px 80px; }
+}
+
+.texas-stripe-animated {
+  background-image: repeating-linear-gradient(
+    -45deg,
+    transparent,
+    transparent 18px,
+    rgba(200,16,46,0.08) 18px,
+    rgba(200,16,46,0.08) 20px,
+    transparent 20px,
+    transparent 38px,
+    rgba(0,48,135,0.08) 38px,
+    rgba(0,48,135,0.08) 40px
+  );
+  animation: stripeScroll 4s linear infinite;
+}
+
+/* ─── Glow Pulse Animations ─────────────────────────────────────────────────── */
+@keyframes pulseRed {
+  0%, 100% { box-shadow: 0 0 8px rgba(200,16,46,0.5); }
+  50%       { box-shadow: 0 0 24px rgba(200,16,46,1), 0 0 60px rgba(200,16,46,0.4); }
+}
+@keyframes pulseBlue {
+  0%, 100% { box-shadow: 0 0 8px rgba(0,48,135,0.5); }
+  50%       { box-shadow: 0 0 24px rgba(0,48,135,1),  0 0 60px rgba(0,48,135,0.4); }
+}
+@keyframes pulseGold {
+  0%, 100% { box-shadow: 0 0 8px rgba(74,158,255,0.4); }
+  50%       { box-shadow: 0 0 28px rgba(74,158,255,1),  0 0 70px rgba(74,158,255,0.5); }
+}
+
+.pulse-red  { animation: pulseRed  2s ease-in-out infinite; }
+.pulse-blue { animation: pulseBlue 2s ease-in-out infinite; }
+.pulse-gold { animation: pulseGold 1.8s ease-in-out infinite; }
+
+/* ─── Border Color Cycle (BRB frame) ────────────────────────────────────────── */
+@keyframes borderCycle {
+  0%   { border-color: var(--color-red);   box-shadow: 0 0 20px rgba(200,16,46,0.5);  }
+  33%  { border-color: var(--color-white); box-shadow: 0 0 20px rgba(255,255,255,0.3);}
+  66%  { border-color: var(--color-blue);  box-shadow: 0 0 20px rgba(0,48,135,0.5);   }
+  100% { border-color: var(--color-red);   box-shadow: 0 0 20px rgba(200,16,46,0.5);  }
+}
+.border-cycle {
+  border: 3px solid var(--color-red);
+  animation: borderCycle 3s ease-in-out infinite;
+}
+
+/* ─── Glitch / Flicker Effect ───────────────────────────────────────────────── */
+@keyframes glitch {
+  0%, 100% { clip-path: none;               transform: translate(0); }
+  20%       { clip-path: inset(30% 0 40% 0); transform: translate(-4px, 2px); filter: hue-rotate(90deg); }
+  40%       { clip-path: inset(70% 0 10% 0); transform: translate(4px, -2px); filter: hue-rotate(-60deg); }
+  60%       { clip-path: inset(10% 0 70% 0); transform: translate(-2px, 4px); filter: hue-rotate(45deg); }
+  80%       { clip-path: none;               transform: translate(2px, -1px); }
+}
+@keyframes flicker {
+  0%, 19%, 21%, 23%, 25%, 54%, 56%, 100% { opacity: 1; }
+  20%, 24%, 55%                            { opacity: 0.4; }
+}
+
+.glitch-text {
+  position: relative;
+  animation: flicker 4s linear infinite;
+}
+.glitch-text::before,
+.glitch-text::after {
+  content: attr(data-text);
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+.glitch-text::before {
+  color: var(--color-red);
+  animation: glitch 3s infinite;
+  opacity: 0.7;
+}
+.glitch-text::after {
+  color: var(--color-blue);
+  animation: glitch 3s infinite reverse;
+  opacity: 0.7;
+}
+
+/* ─── Fade Animations ───────────────────────────────────────────────────────── */
+@keyframes fadeIn {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes fadeOut {
+  from { opacity: 1; }
+  to   { opacity: 0; }
+}
+@keyframes fadeUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to   { opacity: 1; transform: translateY(0);    }
+}
+@keyframes fadeDown {
+  from { opacity: 0; transform: translateY(-20px); }
+  to   { opacity: 1; transform: translateY(0);     }
+}
+@keyframes fadeLeft {
+  from { opacity: 0; transform: translateX(40px); }
+  to   { opacity: 1; transform: translateX(0);    }
+}
+@keyframes fadeRight {
+  from { opacity: 0; transform: translateX(-40px); }
+  to   { opacity: 1; transform: translateX(0);     }
+}
+
+/* ─── Slam / Impact Animations ──────────────────────────────────────────────── */
+@keyframes slamDown {
+  0%   { opacity: 0; transform: translateY(-120px) scale(1.3); }
+  60%  { opacity: 1; transform: translateY(8px) scale(0.97);   }
+  80%  { transform: translateY(-4px) scale(1.01); }
+  100% { transform: translateY(0) scale(1); }
+}
+@keyframes slamLeft {
+  0%   { opacity: 0; transform: translateX(-200px) scale(1.1); }
+  60%  { opacity: 1; transform: translateX(10px);              }
+  80%  { transform: translateX(-4px); }
+  100% { transform: translateX(0); }
+}
+@keyframes slamRight {
+  0%   { opacity: 0; transform: translateX(200px) scale(1.1); }
+  60%  { opacity: 1; transform: translateX(-10px);            }
+  80%  { transform: translateX(4px); }
+  100% { transform: translateX(0); }
+}
+@keyframes popIn {
+  0%   { opacity: 0; transform: scale(0.4); }
+  70%  { opacity: 1; transform: scale(1.08); }
+  85%  { transform: scale(0.96); }
+  100% { transform: scale(1); }
+}
+
+/* ─── Slide Animations ──────────────────────────────────────────────────────── */
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+@keyframes slideOutRight {
+  from { transform: translateX(0);    opacity: 1; }
+  to   { transform: translateX(100%); opacity: 0; }
+}
+@keyframes slideInBottom {
+  from { transform: translateY(100%); opacity: 0; }
+  to   { transform: translateY(0);    opacity: 1; }
+}
+@keyframes slideOutBottom {
+  from { transform: translateY(0);    opacity: 1; }
+  to   { transform: translateY(100%); opacity: 0; }
+}
+
+/* ─── Ticker / Marquee ──────────────────────────────────────────────────────── */
+@keyframes ticker {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+.ticker-track {
+  display: flex;
+  width: max-content;
+  animation: ticker 30s linear infinite;
+  white-space: nowrap;
+}
+
+/* ─── Confetti Burst ────────────────────────────────────────────────────────── */
+@keyframes confettiFall {
+  0%   { transform: translateY(0) rotate(0deg) scale(1);   opacity: 1; }
+  100% { transform: translateY(300px) rotate(720deg) scale(0.5); opacity: 0; }
+}
+
+/* ─── Letter Reveal ─────────────────────────────────────────────────────────── */
+@keyframes letterReveal {
+  from { opacity: 0; transform: translateY(30px) scaleY(0.5); }
+  to   { opacity: 1; transform: translateY(0) scaleY(1); }
+}
+
+/* ─── Flash / Whitewash ─────────────────────────────────────────────────────── */
+@keyframes flashWhite {
+  0%   { opacity: 0; }
+  15%  { opacity: 1; }
+  60%  { opacity: 0.6; }
+  100% { opacity: 0; }
+}
+
+/* ─── Breath / Idle Pulse ───────────────────────────────────────────────────── */
+@keyframes breathe {
+  0%, 100% { transform: scale(1);    opacity: 1;   }
+  50%       { transform: scale(1.02); opacity: 0.9; }
+}
+.breathe { animation: breathe 4s ease-in-out infinite; }
+
+/* ─── Spin (Wheel) ──────────────────────────────────────────────────────────── */
+@keyframes spinReveal {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(var(--spin-deg, 1800deg)); }
+}
+
+/* ─── Card Unclaim Pulse ────────────────────────────────────────────────────── */
+@keyframes cardPulse {
+  0%, 100% { transform: scale(1);    box-shadow: 0 4px 16px rgba(0,0,0,0.4); }
+  50%       { transform: scale(1.03); box-shadow: 0 8px 32px rgba(200,16,46,0.3); }
+}
+.card-pulse { animation: cardPulse 2.5s ease-in-out infinite; }
+
+/* ─── Progress Bar Fill ─────────────────────────────────────────────────────── */
+@keyframes fillBar {
+  from { width: 0%; }
+  to   { width: var(--fill-pct, 50%); }
+}
+
+/* ─── Particle Float ────────────────────────────────────────────────────────── */
+@keyframes floatUp {
+  0%   { transform: translateY(0)    rotate(0deg);   opacity: 0.8; }
+  100% { transform: translateY(-200px) rotate(180deg); opacity: 0;   }
+}
+@keyframes floatDrift {
+  0%   { transform: translateY(1080px) translateX(0px)   rotate(0deg);   opacity: 0; }
+  10%  { opacity: 0.7; }
+  90%  { opacity: 0.5; }
+  100% { transform: translateY(-100px)  translateX(60px) rotate(360deg); opacity: 0; }
+}
+
+/* ─── Box Tracker Pulse ─────────────────────────────────────────────────────── */
+@keyframes boxActivePulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(74,158,255,0.5); }
+  50%       { box-shadow: 0 0 0 8px rgba(74,158,255,0);  }
+}
+
+/* ─── Utility Classes ───────────────────────────────────────────────────────── */
+.font-display { font-family: var(--font-display); }
+.font-ui      { font-family: var(--font-ui);      }
+
+.uppercase { text-transform: uppercase; }
+.tracking-wide  { letter-spacing: 0.08em; }
+.tracking-wider { letter-spacing: 0.15em; }
+.tracking-widest{ letter-spacing: 0.25em; }
+
+.visually-hidden {
+  position: absolute;
+  width: 1px; height: 1px;
+  overflow: hidden;
+  clip: rect(0,0,0,0);
+  white-space: nowrap;
+}
+
+/* ─── Reduced Motion ────────────────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* ─── Focus States ──────────────────────────────────────────────────────────── */
+:focus-visible {
+  outline: 2px solid var(--color-gold);
+  outline-offset: 3px;
+  border-radius: var(--radius-sm);
+}

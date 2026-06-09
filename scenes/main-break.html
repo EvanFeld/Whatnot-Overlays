@@ -1,0 +1,494 @@
+<!--
+/**
+ * Scene: Main Break Overlay
+ * Description: Portrait transparent overlay for Whatnot/phone streams. The opaque
+ *              panel fills the top ~540px with break info and the 8×4 team grid;
+ *              everything below is fully transparent so the live camera shows through.
+ * OBS Setup:   1080×1920 Browser Source. Background: transparent.
+ *              Layer above your camera source at the top of the canvas.
+ * URL Params:  None (reads from localStorage via state.js)
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1080">
+  <title>NGC — Main Break</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    html, body {
+      width: 1080px;
+      height: 1920px;
+      overflow: hidden;
+      background: transparent;
+      position: relative;
+    }
+
+    /* ── Opaque overlay panel — top of frame ─────────────────────── */
+    .overlay-panel {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      background: rgba(10, 10, 15, 0.96);
+      border-bottom: 3px solid var(--color-red);
+    }
+
+    /* ── Header row ──────────────────────────────────────────────── */
+    .header {
+      height: 64px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 14px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      gap: 8px;
+    }
+    .header-logo img {
+      height: 46px;
+      max-width: 110px;
+      object-fit: contain;
+    }
+    .header-logo-fallback {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 14px;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-white);
+    }
+    .header-logo-fallback span { color: var(--color-red); }
+    .header-center {
+      flex: 1;
+      text-align: center;
+    }
+    .header-break-num {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 22px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-gold);
+      text-shadow: 0 0 12px rgba(255,215,0,0.4);
+      line-height: 1;
+    }
+    .header-product {
+      font-family: var(--font-ui);
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 320px;
+      margin: 2px auto 0;
+    }
+    .header-right {
+      text-align: right;
+      flex-shrink: 0;
+    }
+    .teams-left-label {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-text-muted);
+      line-height: 1;
+    }
+    .teams-left-num {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 24px;
+      color: var(--color-red);
+      text-shadow: var(--glow-red);
+      line-height: 1;
+      display: block;
+    }
+
+    /* ── 8×4 Team grid ───────────────────────────────────────────── */
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      gap: 3px;
+      padding: 6px 8px;
+    }
+    .team-card {
+      position: relative;
+      border-radius: 6px;
+      aspect-ratio: 1.25;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 3px;
+      padding: 4px 2px;
+      cursor: pointer;
+      overflow: hidden;
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: transform 0.12s ease;
+    }
+    .team-card:not(.claimed):active { transform: scale(0.94); }
+    .team-card.claimed { cursor: default; }
+    .card-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.9;
+    }
+    .card-logo {
+      position: relative;
+      z-index: 1;
+      width: 34px;
+      height: 34px;
+      object-fit: contain;
+    }
+    .card-abbr {
+      position: relative;
+      z-index: 1;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 1px 3px rgba(0,0,0,0.9);
+      text-align: center;
+      line-height: 1;
+    }
+    .card-logo-fallback {
+      position: relative;
+      z-index: 1;
+      width: 34px;
+      height: 34px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 13px;
+      color: rgba(255,255,255,0.9);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.9);
+    }
+    /* Claimed state — big red X + buyer name */
+    .claimed-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.72);
+      border-radius: 6px;
+      gap: 1px;
+    }
+    .claimed-x {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 30px;
+      color: var(--color-red);
+      line-height: 1;
+    }
+    .claimed-buyer {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: 7px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: var(--color-gold);
+      max-width: 92%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* ── Pack / Box bar ──────────────────────────────────────────── */
+    .pack-bar {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      padding: 7px 14px 10px;
+      border-top: 1px solid rgba(255,255,255,0.07);
+    }
+    .pack-stat {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+    }
+    .pack-stat-label {
+      font-family: var(--font-ui);
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--color-text-muted);
+    }
+    .pack-stat-value {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: 20px;
+      letter-spacing: 0.04em;
+      color: var(--color-white);
+      line-height: 1;
+    }
+    .pack-divider {
+      width: 1px;
+      height: 30px;
+      background: var(--color-border);
+    }
+    .pack-progress {
+      flex: 1;
+      max-width: 220px;
+    }
+    .pack-progress-track {
+      height: 5px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+    .pack-progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, var(--color-red), var(--color-blue));
+      border-radius: 3px;
+      transition: width 0.5s var(--ease-out-expo);
+    }
+
+    /* ── Claim modal ─────────────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.82);
+      z-index: 200;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+    }
+    .modal-backdrop.open { opacity: 1; pointer-events: all; }
+    .modal {
+      background: var(--color-surface);
+      border: 2px solid var(--color-gold);
+      border-radius: var(--radius-xl);
+      padding: 28px 36px;
+      min-width: 360px;
+      text-align: center;
+      box-shadow: var(--glow-gold), 0 20px 60px rgba(0,0,0,0.8);
+    }
+    .modal-logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      margin-bottom: 12px;
+    }
+    .modal-team-name {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-2xl);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-white);
+      margin-bottom: 16px;
+    }
+    .modal-input {
+      width: 100%;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: var(--radius-md);
+      padding: 12px 16px;
+      font-family: var(--font-ui);
+      font-size: var(--text-base);
+      color: var(--color-white);
+      text-align: center;
+      outline: none;
+      margin-bottom: 16px;
+      box-sizing: border-box;
+    }
+    .modal-input:focus { border-color: var(--color-gold); }
+    .modal-input::placeholder { color: var(--color-text-muted); }
+    .modal-buttons { display: flex; gap: 12px; justify-content: center; }
+    .btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: 10px 24px;
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: transform 0.1s ease;
+    }
+    .btn:active { transform: scale(0.96); }
+    .btn-primary { background: var(--color-gold); color: #000; }
+    .btn-secondary {
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+    }
+  </style>
+</head>
+<body data-scene="main-break">
+
+  <!-- Opaque break panel -->
+  <div class="overlay-panel">
+
+    <!-- Header -->
+    <header class="header">
+      <div class="header-logo">
+        <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+             onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+        <div class="header-logo-fallback" style="display:none">NEW GEN <span>NGC</span></div>
+      </div>
+      <div class="header-center">
+        <div class="header-break-num" id="breakNum">BREAK #1</div>
+        <div class="header-product" id="productName">—</div>
+      </div>
+      <div class="header-right">
+        <span class="teams-left-label">Left</span>
+        <span class="teams-left-num" id="teamsLeft">32</span>
+      </div>
+    </header>
+
+    <!-- Team grid -->
+    <div class="team-grid" id="teamGrid"></div>
+
+    <!-- Pack / Box bar -->
+    <div class="pack-bar">
+      <div class="pack-stat">
+        <div class="pack-stat-label">Box</div>
+        <div class="pack-stat-value" id="boxValue">1/1</div>
+      </div>
+      <div class="pack-divider"></div>
+      <div class="pack-stat">
+        <div class="pack-stat-label">Pack</div>
+        <div class="pack-stat-value" id="packValue">1/24</div>
+      </div>
+      <div class="pack-divider"></div>
+      <div class="pack-progress">
+        <div class="pack-progress-track">
+          <div class="pack-progress-fill" id="packFill" style="width:4%"></div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /.overlay-panel -->
+
+  <!-- Claim modal -->
+  <div class="modal-backdrop" id="modalBackdrop">
+    <div class="modal">
+      <img id="modalLogo" class="modal-logo" src="" alt="">
+      <div id="modalTeamName" class="modal-team-name"></div>
+      <input type="text" id="modalInput" class="modal-input"
+             placeholder="Buyer name…" maxlength="32" autocomplete="off">
+      <div class="modal-buttons">
+        <button class="btn btn-secondary" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary"   id="modalConfirm">Claim</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/teams.js"></script>
+  <script src="../js/state.js"></script>
+  <script>
+    let pendingTeamId = null;
+
+    const gridEl        = document.getElementById('teamGrid');
+    const breakNumEl    = document.getElementById('breakNum');
+    const productNameEl = document.getElementById('productName');
+    const teamsLeftEl   = document.getElementById('teamsLeft');
+    const boxValueEl    = document.getElementById('boxValue');
+    const packValueEl   = document.getElementById('packValue');
+    const packFillEl    = document.getElementById('packFill');
+    const modalBackdrop = document.getElementById('modalBackdrop');
+    const modalLogoEl   = document.getElementById('modalLogo');
+    const modalNameEl   = document.getElementById('modalTeamName');
+    const modalInput    = document.getElementById('modalInput');
+
+    const renderGrid = (teams) => {
+      const unclaimed = teams.filter(t => !t.claimed).length;
+      teamsLeftEl.textContent = unclaimed;
+      gridEl.innerHTML = '';
+      teams.forEach(team => {
+        const card = document.createElement('div');
+        card.className = 'team-card' + (team.claimed ? ' claimed' : '');
+        card.dataset.teamId = team.id;
+
+        const claimedHtml = team.claimed ? `
+          <div class="claimed-overlay">
+            <div class="claimed-x">✕</div>
+            ${team.claimedBy ? `<div class="claimed-buyer">${team.claimedBy}</div>` : ''}
+          </div>` : '';
+
+        card.innerHTML = `
+          <div class="card-bg" style="background:${team.primaryColor || '#1a1a28'}"></div>
+          <img class="card-logo" src="../${team.logoPath}" alt="${team.abbreviation}"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="card-logo-fallback" style="display:none">${team.abbreviation}</div>
+          <div class="card-abbr">${team.abbreviation}</div>
+          ${claimedHtml}
+        `;
+
+        if (!team.claimed) {
+          card.addEventListener('click', () => openModal(team));
+        }
+        gridEl.appendChild(card);
+      });
+    };
+
+    const openModal = (team) => {
+      pendingTeamId = team.id;
+      modalLogoEl.src = `../${team.logoPath}`;
+      modalNameEl.textContent = team.name;
+      modalInput.value = '';
+      modalBackdrop.classList.add('open');
+      setTimeout(() => modalInput.focus(), 50);
+    };
+
+    const closeModal = () => {
+      modalBackdrop.classList.remove('open');
+      pendingTeamId = null;
+    };
+
+    const confirmClaim = () => {
+      const name = modalInput.value.trim();
+      if (!name || !pendingTeamId) return;
+      NGCState.claimTeam(pendingTeamId, name);
+      closeModal();
+    };
+
+    document.getElementById('modalCancel').addEventListener('click', closeModal);
+    document.getElementById('modalConfirm').addEventListener('click', confirmClaim);
+    modalInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') confirmClaim();
+      if (e.key === 'Escape') closeModal();
+    });
+    modalBackdrop.addEventListener('click', e => {
+      if (e.target === modalBackdrop) closeModal();
+    });
+
+    const render = () => {
+      const state = NGCState.getState();
+      const teams = state.teams && state.teams.length ? state.teams : NFL_TEAMS;
+
+      breakNumEl.textContent  = `BREAK #${state.breakNumber}`;
+      productNameEl.textContent = state.productName || '—';
+
+      boxValueEl.textContent  = state.totalBoxes > 1
+        ? `${state.currentBox}/${state.totalBoxes}` : '—';
+      packValueEl.textContent = `${state.currentPack}/${state.totalPacks}`;
+
+      const pct = Math.round((state.currentPack / (state.totalPacks || 1)) * 100);
+      packFillEl.style.width = `${pct}%`;
+
+      renderGrid(teams);
+    };
+
+    render();
+    NGCState.onStateChange(render);
+  </script>
+</body>
+</html>

@@ -1,0 +1,631 @@
+<!--
+/**
+ * Scene: NFL Team Randomizer (Spin Wheel)
+ * Description: Responsive spin wheel using CrazyTim/spin-wheel library.
+ *              Works at any aspect ratio — portrait (1080x1920) in OBS or
+ *              landscape in a browser window.
+ * OBS Setup:   Browser Source sized to match your canvas. Click "Interact" to use.
+ * URL Params:  None (reads from localStorage via state.js)
+ * Library:     js/vendor/spin-wheel-esm.js (spin-wheel@5.0.2, local copy)
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NGC — Randomizer</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    html, body {
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    body[data-scene="randomizer"] {
+      background: var(--color-dark-bg);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Top Bar ─────────────────────────────────────────────────── */
+    .top-bar {
+      height: var(--topbar-height);
+      background: linear-gradient(90deg, #0a0a0f 0%, var(--color-blue-dim) 40%, #0a0a0f 100%);
+      border-bottom: 2px solid var(--color-red);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-8);
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+    .top-brand {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-xl);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-white);
+    }
+    .top-brand span { color: var(--color-red); }
+    .top-title {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-2xl);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-gold);
+      white-space: nowrap;
+    }
+
+    /* ── Main Layout ─────────────────────────────────────────────── */
+    .main-area {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+      padding: 8px;
+      gap: 8px;
+      min-height: 0;
+    }
+
+    /* Portrait: wheel on top, result/controls below */
+    @media (orientation: portrait) {
+      .main-area {
+        flex-direction: column;
+        align-items: center;
+      }
+      .wheel-section {
+        flex: 0 0 auto;
+        width: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+      #wheelContainer {
+        width:  min(80vw, 44vh, 700px);
+        height: min(80vw, 44vh, 700px);
+      }
+      .right-panel {
+        flex: 1;
+        width: 100%;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+      }
+      .result-box {
+        min-height: min(180px, 22vh);
+      }
+    }
+
+    /* Landscape: wheel on left, result on right */
+    @media (orientation: landscape) {
+      .main-area {
+        flex-direction: row;
+      }
+      .wheel-section {
+        flex: 0 0 auto;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+      #wheelContainer {
+        width:  min(38vw, 78vh, 700px);
+        height: min(38vw, 78vh, 700px);
+      }
+      .right-panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        gap: var(--space-6);
+        justify-content: center;
+        overflow-y: auto;
+      }
+      .result-box {
+        min-height: 280px;
+      }
+    }
+
+    /* ── Wheel Section ───────────────────────────────────────────── */
+    .wheel-section {
+      position: relative;
+    }
+
+    #wheelContainer {
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    /* Pointer arrow pointing left toward wheel from right side */
+    .wheel-pointer {
+      position: absolute;
+      right: -20px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 0;
+      height: 0;
+      border-top: 22px solid transparent;
+      border-bottom: 22px solid transparent;
+      border-right: 40px solid var(--color-gold);
+      filter: drop-shadow(0 0 8px rgba(74,158,255,0.8));
+      z-index: 20;
+    }
+
+    /* SPIN button overlay in wheel center */
+    #spinBtn {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 30;
+      width:  clamp(80px, 15vmin, 110px);
+      height: clamp(80px, 15vmin, 110px);
+      border-radius: 50%;
+      background: radial-gradient(circle, #1a1a2e 30%, #0a0a15 100%);
+      border: 3px solid var(--color-gold);
+      box-shadow: var(--glow-gold), 0 0 0 6px rgba(0,0,0,0.6);
+      cursor: pointer;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-xl);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-gold);
+      transition: transform var(--dur-fast) var(--ease-out-back),
+                  box-shadow var(--dur-fast) ease;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    #spinBtn:hover:not(:disabled) {
+      transform: translate(-50%, -50%) scale(1.08);
+      box-shadow: 0 0 24px rgba(74,158,255,1), 0 0 60px rgba(74,158,255,0.5), 0 0 0 6px rgba(0,0,0,0.6);
+    }
+    #spinBtn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    #spinBtn:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 4px; }
+
+    /* ── Right Panel ─────────────────────────────────────────────── */
+
+    /* Result Box */
+    .result-box {
+      background: var(--color-surface);
+      border: 2px solid var(--color-border);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+      justify-content: center;
+      position: relative;
+      overflow: hidden;
+      transition: border-color var(--dur-slow) ease, box-shadow var(--dur-slow) ease;
+    }
+    .result-box.has-winner {
+      border-color: var(--color-gold);
+      box-shadow: var(--glow-gold);
+    }
+    .result-box-label {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--color-text-muted);
+      position: absolute;
+      top: var(--space-4);
+      left: var(--space-6);
+    }
+    .result-waiting {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: var(--text-xl);
+      color: var(--color-text-muted);
+      text-align: center;
+      opacity: 0.5;
+    }
+    .result-team-logo {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      animation: popIn var(--dur-slow) var(--ease-out-back);
+    }
+    .result-team-name {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-3xl);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--color-white);
+      text-align: center;
+      text-shadow: 0 2px 16px rgba(0,0,0,0.8);
+      animation: slamDown var(--dur-slow) var(--ease-out-back);
+    }
+    .result-color-bar {
+      height: 6px;
+      width: 80%;
+      border-radius: var(--radius-full);
+      animation: fadeIn var(--dur-slow) ease;
+    }
+    .result-confetti-layer {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      overflow: hidden;
+    }
+
+    /* Controls */
+    .controls {
+      display: flex;
+      gap: var(--space-4);
+    }
+    .ctrl-btn {
+      flex: 1;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-base);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: var(--space-4);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-white);
+      cursor: pointer;
+      transition: background var(--dur-fast) ease, transform var(--dur-fast) ease;
+    }
+    .ctrl-btn:hover { background: var(--color-surface-2); transform: scale(1.02); }
+    .ctrl-btn:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; }
+    .ctrl-btn.danger { color: var(--color-red); border-color: rgba(200,16,46,0.3); }
+    .ctrl-btn.danger:hover { background: rgba(200,16,46,0.1); }
+
+    /* Excluded teams list */
+    .excluded-section {
+      background: var(--color-surface);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-lg);
+      padding: var(--space-4);
+    }
+    .excluded-title {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-3);
+    }
+    .excluded-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--space-2);
+      min-height: 32px;
+    }
+    .excluded-chip {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      background: rgba(200,16,46,0.15);
+      border: 1px solid rgba(200,16,46,0.3);
+      border-radius: var(--radius-full);
+      padding: var(--space-1) var(--space-3);
+      font-family: var(--font-ui);
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+    }
+    .excluded-remove {
+      background: none;
+      border: none;
+      color: var(--color-red);
+      cursor: pointer;
+      font-size: var(--text-base);
+      line-height: 1;
+      padding: 0;
+      display: flex;
+      align-items: center;
+    }
+    .excluded-remove:focus-visible { outline: 1px solid var(--color-gold); border-radius: 50%; }
+    .excluded-empty {
+      font-family: var(--font-ui);
+      font-size: var(--text-xs);
+      color: var(--color-text-muted);
+      opacity: 0.5;
+    }
+
+    /* Pool counter */
+    .pool-counter {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-base);
+      color: var(--color-text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      text-align: center;
+    }
+    .pool-counter span { color: var(--color-white); }
+  </style>
+</head>
+<body data-scene="randomizer" class="scanline">
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="top-brand">NEW GEN <span>COLLECTIONS</span></div>
+    <div class="top-title">Team Randomizer</div>
+    <div style="font-family:var(--font-ui);font-size:var(--text-sm);color:var(--color-text-muted)">@NewGenCollections</div>
+  </header>
+
+  <!-- Main -->
+  <div class="main-area">
+
+    <!-- Wheel -->
+    <div class="wheel-section">
+      <div style="position:relative">
+        <div id="wheelContainer"></div>
+        <div id="wheelError" style="display:none; color:#C8102E; font-family:'Barlow Condensed',sans-serif; font-size:2vw; text-align:center; padding:4vh; line-height:1.6;">
+          &#9888; Wheel library failed to load.<br>
+          Check: js/vendor/spin-wheel-esm.js exists.
+        </div>
+        <div class="wheel-pointer" aria-hidden="true"></div>
+        <button id="spinBtn" aria-label="Spin the wheel">SPIN</button>
+      </div>
+    </div>
+
+    <!-- Right Panel -->
+    <div class="right-panel">
+
+      <!-- Result -->
+      <div class="result-box" id="resultBox">
+        <div class="result-box-label">Result</div>
+        <div class="result-confetti-layer" id="confettiLayer"></div>
+        <div class="result-waiting" id="resultWaiting">Spin to reveal a team!</div>
+      </div>
+
+      <!-- Pool Counter -->
+      <div class="pool-counter">
+        Teams in pool: <span id="poolCount">32</span>
+      </div>
+
+      <!-- Controls -->
+      <div class="controls">
+        <button class="ctrl-btn danger" id="excludeLastBtn" disabled>Exclude Last Winner</button>
+        <button class="ctrl-btn" id="resetAllBtn">Reset All (32 Teams)</button>
+      </div>
+
+      <!-- Excluded Teams -->
+      <div class="excluded-section">
+        <div class="excluded-title">Excluded Teams</div>
+        <div class="excluded-list" id="excludedList">
+          <span class="excluded-empty">None excluded</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <script src="../js/teams.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/animations.js"></script>
+  <script type="module">
+    import { Wheel } from '../js/vendor/spin-wheel-esm.js';
+
+    /* ── State ─────────────────────────────────────────────────── */
+    let excludedIds  = new Set();
+    let lastWinnerId = null;
+    let isSpinning   = false;
+    let wheel        = null;
+
+    /* ── DOM ───────────────────────────────────────────────────── */
+    const spinBtn        = document.getElementById('spinBtn');
+    const resultBox      = document.getElementById('resultBox');
+    const resultWaiting  = document.getElementById('resultWaiting');
+    const confettiLayer  = document.getElementById('confettiLayer');
+    const excludeLastBtn = document.getElementById('excludeLastBtn');
+    const resetAllBtn    = document.getElementById('resetAllBtn');
+    const excludedList   = document.getElementById('excludedList');
+    const poolCountEl    = document.getElementById('poolCount');
+    const wheelContainer = document.getElementById('wheelContainer');
+    const wheelError     = document.getElementById('wheelError');
+
+    /* ── Size wheel container in px (library requires explicit px) ─ */
+    const sizeContainer = () => {
+      const size = Math.min(window.innerWidth * 0.55, window.innerHeight * 0.75);
+      wheelContainer.style.width  = size + 'px';
+      wheelContainer.style.height = size + 'px';
+    };
+    sizeContainer();
+    window.addEventListener('resize', () => { sizeContainer(); buildWheel(); });
+
+    /* ── Active pool ───────────────────────────────────────────── */
+    const getPool = () => NFL_TEAMS.filter(t => !excludedIds.has(t.id));
+
+    /* ── Build / rebuild wheel ─────────────────────────────────── */
+    const buildWheel = () => {
+      const pool = getPool();
+      poolCountEl.textContent = pool.length;
+
+      const wheelItems = pool.map(team => ({
+        label:           team.abbreviation,
+        backgroundColor: team.primaryColor || '#1a1a28',
+        labelColor:      '#ffffff',
+        // image loading commented out — renders immediately with colors + text
+        // image:        `../${team.logoPath}`,
+        weight:          1,
+      }));
+
+      console.log('Wheel items:', wheelItems.length, wheelItems[0]);
+
+      if (wheel) {
+        wheelContainer.innerHTML = '';
+        wheel = null;
+      }
+
+      if (wheelItems.length === 0) return;
+
+      try {
+        wheel = new Wheel(wheelContainer, {
+          items:                wheelItems,
+          radius:               0.94,
+          borderWidth:          4,
+          borderColor:          '#4A9EFF',
+          lineWidth:            1,
+          lineColor:            'rgba(255,255,255,0.15)',
+          itemLabelRadius:      0.82,
+          itemLabelFontSizeMax: 18,
+          itemLabelAlign:       'left',
+          rotationSpeedMax:     600,
+          rotationResistance:   -35,
+          isInteractive:        false,
+          pointerAngle:         90,
+          onRest:               handleRest,
+        });
+        wheelError.style.display = 'none';
+      } catch (err) {
+        console.error('Wheel init failed:', err);
+        wheelError.style.display = 'block';
+        spinBtn.disabled = true;
+      }
+    };
+
+    /* ── Spin handler ──────────────────────────────────────────── */
+    const handleSpin = () => {
+      const pool = getPool();
+      if (!wheel || isSpinning || pool.length === 0) return;
+
+      isSpinning = true;
+      spinBtn.disabled = true;
+      resultWaiting.textContent = 'Spinning…';
+      resultBox.classList.remove('has-winner');
+
+      const prevResult = resultBox.querySelector('.result-team-logo, .result-team-name, .result-color-bar');
+      if (prevResult) prevResult.remove();
+
+      const winnerIdx  = Math.floor(Math.random() * pool.length);
+      const winnerTeam = pool[winnerIdx];
+      lastWinnerId = winnerTeam.id;
+
+      wheel.spinToItem(winnerIdx, 5000, true, 4 + Math.floor(Math.random() * 4), 1);
+
+      try {
+        const spinAudio = new Audio('../assets/sounds/spin.mp3');
+        spinAudio.volume = 0.4;
+        spinAudio.play().catch(() => {});
+      } catch {}
+    };
+
+    /* ── Rest callback ─────────────────────────────────────────── */
+    const handleRest = (event) => {
+      isSpinning = false;
+      spinBtn.disabled = false;
+      excludeLastBtn.disabled = false;
+
+      const pool   = getPool();
+      const winner = pool[event.currentIndex];
+      if (!winner) return;
+
+      try {
+        const revealAudio = new Audio('../assets/sounds/reveal.mp3');
+        revealAudio.volume = 0.6;
+        revealAudio.play().catch(() => {});
+      } catch {}
+
+      showResult(winner);
+    };
+
+    /* ── Show result panel ─────────────────────────────────────── */
+    const showResult = (team) => {
+      const oldEls = resultBox.querySelectorAll('.result-team-logo, .result-team-name, .result-color-bar');
+      oldEls.forEach(el => el.remove());
+      confettiLayer.innerHTML = '';
+      resultWaiting.style.display = 'none';
+
+      resultBox.style.background = `linear-gradient(135deg, ${team.primaryColor}22, var(--color-surface))`;
+      resultBox.classList.add('has-winner');
+
+      const logo = document.createElement('img');
+      logo.className = 'result-team-logo';
+      logo.src = `../${team.logoPath}`;
+      logo.alt = team.name;
+      logo.onerror = () => { logo.style.display = 'none'; };
+      resultBox.appendChild(logo);
+
+      const nameEl = document.createElement('div');
+      nameEl.className = 'result-team-name';
+      nameEl.textContent = team.name;
+      resultBox.appendChild(nameEl);
+
+      const bar = document.createElement('div');
+      bar.className = 'result-color-bar';
+      bar.style.background = `linear-gradient(90deg, ${team.primaryColor}, ${team.secondaryColor || '#fff'})`;
+      resultBox.appendChild(bar);
+
+      /* Confetti burst centered on result box */
+      const rect = confettiLayer.getBoundingClientRect();
+      NGCAnim.confettiBurst(confettiLayer, { x: rect.width / 2, y: rect.height / 2 }, 50);
+    };
+
+    /* ── Exclude / reset handlers ──────────────────────────────── */
+    excludeLastBtn.addEventListener('click', () => {
+      if (!lastWinnerId) return;
+      excludedIds.add(lastWinnerId);
+      lastWinnerId = null;
+      excludeLastBtn.disabled = true;
+      buildWheel();
+      renderExcluded();
+    });
+
+    resetAllBtn.addEventListener('click', () => {
+      excludedIds.clear();
+      lastWinnerId = null;
+      excludeLastBtn.disabled = true;
+      resultBox.classList.remove('has-winner');
+      resultBox.style.background = '';
+      const oldEls = resultBox.querySelectorAll('.result-team-logo, .result-team-name, .result-color-bar');
+      oldEls.forEach(el => el.remove());
+      resultWaiting.style.display = '';
+      resultWaiting.textContent = 'Spin to reveal a team!';
+      buildWheel();
+      renderExcluded();
+    });
+
+    /* ── Render excluded chips ─────────────────────────────────── */
+    const renderExcluded = () => {
+      excludedList.innerHTML = '';
+      if (excludedIds.size === 0) {
+        excludedList.innerHTML = '<span class="excluded-empty">None excluded</span>';
+        return;
+      }
+      excludedIds.forEach(id => {
+        const team  = NFL_TEAMS.find(t => t.id === id);
+        if (!team) return;
+        const chip  = document.createElement('div');
+        chip.className = 'excluded-chip';
+        chip.innerHTML = `
+          <span>${team.abbreviation}</span>
+          <button class="excluded-remove" aria-label="Re-add ${team.name}" data-id="${id}">×</button>
+        `;
+        chip.querySelector('.excluded-remove').addEventListener('click', () => {
+          excludedIds.delete(id);
+          buildWheel();
+          renderExcluded();
+        });
+        excludedList.appendChild(chip);
+      });
+    };
+
+    /* ── Init ──────────────────────────────────────────────────── */
+    spinBtn.addEventListener('click', handleSpin);
+    buildWheel();
+    renderExcluded();
+  </script>
+</body>
+</html>

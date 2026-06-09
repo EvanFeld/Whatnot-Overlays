@@ -1,0 +1,251 @@
+﻿<!--
+/**
+ * Scene: Lower Third Ticker Overlay
+ * Description: 1920x80px transparent strip positioned at y=1000 in OBS.
+ *              Left: NGC logo bug. Center: scrolling marquee with hit feed
+ *              and custom messages from state.js. Right: brand text.
+ *              Updates in real-time as state.recentHits changes.
+ * OBS Setup:   1920x80 Browser Source. Position: X=0, Y=1000.
+ *              Set custom CSS: body { background: transparent; }
+ * URL Params:  None (reads from localStorage via state.js)
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>NGC — Lower Third</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    html, body {
+      width: 1920px;
+      height: 80px;
+      overflow: hidden;
+      background: transparent;
+    }
+
+    body[data-scene="lower-third"] {
+      display: flex;
+      align-items: stretch;
+      position: relative;
+    }
+
+    /* ── Left accent border ──────────────────────────────────────── */
+    .left-accent {
+      width: 5px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, var(--color-red) 0%, var(--color-blue) 100%);
+    }
+
+    /* ── Logo bug ────────────────────────────────────────────────── */
+    .logo-bug {
+      flex-shrink: 0;
+      width: 180px;
+      background: linear-gradient(90deg, rgba(10,10,15,0.97) 0%, rgba(10,10,15,0.9) 100%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-4);
+      border-right: 1px solid rgba(200,16,46,0.4);
+    }
+    .logo-bug img {
+      height: 44px;
+      max-width: 150px;
+      object-fit: contain;
+    }
+    .logo-bug-fallback {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-base);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-white);
+      white-space: nowrap;
+    }
+    .logo-bug-fallback span { color: var(--color-red); }
+
+    /* ── Ticker wrapper (scrolling center) ───────────────────────── */
+    .ticker-wrapper {
+      flex: 1;
+      overflow: hidden;
+      background: rgba(10,10,15,0.92);
+      display: flex;
+      align-items: center;
+      position: relative;
+    }
+    /* Fade edges */
+    .ticker-wrapper::before,
+    .ticker-wrapper::after {
+      content: '';
+      position: absolute;
+      top: 0; bottom: 0;
+      width: 40px;
+      z-index: 2;
+      pointer-events: none;
+    }
+    .ticker-wrapper::before {
+      left: 0;
+      background: linear-gradient(90deg, rgba(10,10,15,0.95), transparent);
+    }
+    .ticker-wrapper::after {
+      right: 0;
+      background: linear-gradient(270deg, rgba(10,10,15,0.95), transparent);
+    }
+
+    .ticker-track {
+      display: flex;
+      width: max-content;
+      white-space: nowrap;
+      animation: ticker 40s linear infinite;
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: var(--text-lg);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-white);
+    }
+
+    .ticker-segment {
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-3);
+    }
+    .ticker-sep {
+      color: var(--color-gold);
+      margin: 0 var(--space-6);
+      opacity: 0.7;
+    }
+    .ticker-hit {
+      color: var(--color-gold);
+    }
+    .ticker-hit-icon { margin-right: var(--space-2); }
+
+    /* ── Right brand bug ─────────────────────────────────────────── */
+    .right-brand {
+      flex-shrink: 0;
+      width: 280px;
+      background: linear-gradient(90deg, rgba(10,10,15,0.9) 0%, rgba(10,10,15,0.97) 100%);
+      border-left: 1px solid rgba(0,48,135,0.4);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 0 var(--space-5);
+    }
+    .right-brand-name {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-base);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-white);
+      white-space: nowrap;
+    }
+    .right-brand-slogan {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: var(--text-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      color: var(--color-gold);
+      white-space: nowrap;
+    }
+
+    /* ── Right accent border ─────────────────────────────────────── */
+    .right-accent {
+      width: 5px;
+      flex-shrink: 0;
+      background: linear-gradient(180deg, var(--color-blue) 0%, var(--color-red) 100%);
+    }
+  </style>
+</head>
+<body data-scene="lower-third">
+
+  <!-- Left accent -->
+  <div class="left-accent" aria-hidden="true"></div>
+
+  <!-- Logo bug -->
+  <div class="logo-bug">
+    <img src="../assets/logo/newgen-logo.svg" alt="New Gen Collections"
+         onerror="this.style.display='none';this.nextElementSibling.style.display='block'">
+    <div class="logo-bug-fallback" style="display:none">
+      <span>NGC</span>
+    </div>
+  </div>
+
+  <!-- Scrolling ticker -->
+  <div class="ticker-wrapper" aria-live="polite" aria-label="Live ticker">
+    <div class="ticker-track" id="tickerTrack"></div>
+  </div>
+
+  <!-- Right brand bug -->
+  <div class="right-brand">
+    <div class="right-brand-name">New Gen Collections</div>
+    <div class="right-brand-slogan">Singles &amp; Giveaways</div>
+  </div>
+
+  <!-- Right accent -->
+  <div class="right-accent" aria-hidden="true"></div>
+
+  <script src="../js/teams.js"></script>
+  <script src="../js/state.js"></script>
+  <script>
+    const BASE_MESSAGES = [
+      '🔴 LIVE — New Gen Collections',
+      'Singles',
+      'Giveaways',
+      'Houston TX',
+      '🎴 Sports Card Box Breaks',
+    ];
+
+    const tickerTrackEl = document.getElementById('tickerTrack');
+    let   tickerDuration = 40; /* seconds, recalculated based on content length */
+
+    /** Builds the full ticker content from state + base messages. */
+    const buildTicker = (recentHits) => {
+      const segments = [...BASE_MESSAGES];
+
+      (recentHits || []).slice(0, 8).forEach(hit => {
+        const teamData = typeof NFL_TEAMS !== 'undefined'
+          ? NFL_TEAMS.find(t => t.id === hit.team)
+          : null;
+        const teamName = teamData ? teamData.abbreviation : (hit.team || '').toUpperCase();
+        segments.push(`🔥 HIT: ${hit.player} — ${hit.cardName}${teamName ? ` (${teamName})` : ''}${hit.value ? ` ~$${hit.value}` : ''}`);
+      });
+
+      /* Double for seamless loop */
+      const doubled = [...segments, ...segments];
+      const content = doubled
+        .map((msg, i) => {
+          const isHit = msg.startsWith('🔥');
+          return `
+            <span class="ticker-segment ${isHit ? 'ticker-hit' : ''}">
+              ${msg}
+            </span>
+            <span class="ticker-sep" aria-hidden="true">•</span>
+          `;
+        })
+        .join('');
+
+      tickerTrackEl.innerHTML = content;
+
+      /* Restart animation cleanly */
+      tickerTrackEl.style.animation = 'none';
+      void tickerTrackEl.offsetWidth;
+      /* Speed: approximately 200px/s */
+      const trackHalfWidth = tickerTrackEl.scrollWidth / 2;
+      const duration = Math.max(trackHalfWidth / 200, 20);
+      tickerTrackEl.style.animation = `ticker ${duration}s linear infinite`;
+    };
+
+    /* ── Init and live sync ─────────────────────────────────────── */
+    const state = NGCState.getState();
+    buildTicker(state.recentHits);
+
+    NGCState.onStateChange((newState) => {
+      buildTicker(newState.recentHits);
+    });
+  </script>
+</body>
+</html>

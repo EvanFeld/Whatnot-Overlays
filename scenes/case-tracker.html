@@ -1,0 +1,403 @@
+﻿<!--
+/**
+ * Scene: Case Break Box Tracker
+ * Description: Shows case break progress as a row of box icons (up to 12).
+ *              Completed boxes glow gold/checkmark, current box pulses,
+ *              upcoming boxes are dimmed outlines. Can be used standalone
+ *              (full scene) or as a transparent OBS overlay.
+ * OBS Setup:   1920x1080 Browser Source. For overlay use, enable "Custom CSS"
+ *              in OBS and set body { background: transparent; }.
+ *              Or use directly as a standalone scene.
+ * URL Params:  ?box=3&total=6&product=2024+Panini+Prizm+NFL&packs=24
+ *              (overrides localStorage state; useful for quick OBS source config)
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>NGC — Case Tracker</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    body[data-scene="case-tracker"] {
+      background: var(--color-dark-bg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* Transparent mode (OBS overlay) */
+    body[data-scene="case-tracker"].overlay-mode {
+      background: transparent;
+    }
+
+    /* ── Background stripes ──────────────────────────────────────── */
+    .bg-stripes {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    /* ── Top Bar ─────────────────────────────────────────────────── */
+    .top-bar {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: var(--topbar-height);
+      background: linear-gradient(90deg, #0a0a0f 0%, var(--color-blue-dim) 40%, #0a0a0f 100%);
+      border-bottom: 2px solid var(--color-red);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-8);
+      z-index: 10;
+    }
+    .top-brand {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-xl);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-white);
+    }
+    .top-brand span { color: var(--color-red); }
+
+    /* ── Main content ────────────────────────────────────────────── */
+    .tracker-content {
+      position: relative;
+      z-index: 5;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-10);
+      text-align: center;
+      width: 100%;
+      padding: 0 var(--space-16);
+    }
+
+    /* Product name */
+    .product-name {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-2xl);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--color-text-muted);
+      animation: fadeIn var(--dur-slow) ease;
+    }
+
+    /* Big box counter */
+    .box-counter-display {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-4);
+    }
+    .box-label {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-3xl);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--color-text-muted);
+    }
+    .box-current {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-6xl);
+      color: var(--color-white);
+      text-shadow: var(--glow-red);
+      line-height: 1;
+    }
+    .box-sep {
+      font-family: var(--font-display);
+      font-weight: 600;
+      font-size: var(--text-3xl);
+      color: var(--color-text-muted);
+    }
+    .box-total {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-4xl);
+      color: var(--color-text-muted);
+    }
+
+    /* Box icons row */
+    .box-track {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      flex-wrap: wrap;
+      justify-content: center;
+      max-width: 1600px;
+    }
+
+    .box-icon {
+      width: 110px;
+      height: 130px;
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      border: 2px solid rgba(255,255,255,0.12);
+      background: var(--color-surface);
+      position: relative;
+      transition: all var(--dur-normal) var(--ease-out-expo);
+    }
+
+    /* Completed box */
+    .box-icon.done {
+      background: linear-gradient(135deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05));
+      border-color: var(--color-gold);
+      box-shadow: 0 0 16px rgba(255,215,0,0.3);
+    }
+    .box-icon.done .box-icon-symbol { color: var(--color-gold); }
+    .box-icon.done .box-icon-num    { color: var(--color-gold); }
+
+    /* Active / current box */
+    .box-icon.active {
+      background: linear-gradient(135deg, rgba(200,16,46,0.2), rgba(200,16,46,0.05));
+      border-color: var(--color-red);
+      box-shadow: 0 0 0 0 rgba(200,16,46,0.5);
+      animation: boxActivePulse 1.4s ease-out infinite;
+      transform: scale(1.1);
+    }
+    .box-icon.active .box-icon-symbol { color: var(--color-red); }
+    .box-icon.active .box-icon-num    { color: var(--color-white); }
+
+    /* Upcoming box */
+    .box-icon.upcoming {
+      opacity: 0.3;
+      background: transparent;
+    }
+
+    .box-icon-symbol {
+      font-size: 40px;
+      color: var(--color-text-muted);
+      line-height: 1;
+      transition: color var(--dur-normal) ease;
+    }
+    .box-icon-num {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-base);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-text-muted);
+      transition: color var(--dur-normal) ease;
+    }
+    /* Checkmark overlay on done boxes */
+    .box-icon.done::after {
+      content: '✓';
+      position: absolute;
+      top: -8px;
+      right: -8px;
+      width: 24px;
+      height: 24px;
+      background: var(--color-gold);
+      color: #000;
+      font-size: 14px;
+      font-weight: 900;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      line-height: 24px;
+    }
+
+    /* Packs remaining */
+    .packs-remaining {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-xl);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-text-muted);
+    }
+    .packs-remaining span {
+      color: var(--color-white);
+      font-size: var(--text-2xl);
+    }
+
+    /* Controls */
+    .controls {
+      position: absolute;
+      bottom: var(--space-8);
+      right: var(--space-8);
+      display: flex;
+      gap: var(--space-4);
+      z-index: 10;
+    }
+    .ctrl-btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-base);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: var(--space-3) var(--space-6);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-white);
+      cursor: pointer;
+      transition: background var(--dur-fast) ease, transform var(--dur-fast) ease;
+    }
+    .ctrl-btn:hover { background: var(--color-surface-2); transform: scale(1.03); }
+    .ctrl-btn:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; }
+    .ctrl-btn.primary {
+      background: var(--color-red);
+      border-color: var(--color-red);
+    }
+    .ctrl-btn.primary:hover { background: var(--color-red-bright); }
+  </style>
+</head>
+<body data-scene="case-tracker" class="scanline">
+
+  <div class="bg-stripes texas-stripe-animated" aria-hidden="true"></div>
+
+  <!-- Top bar (hidden in overlay mode) -->
+  <header class="top-bar" id="topBar">
+    <div class="top-brand">NEW GEN <span>COLLECTIONS</span></div>
+    <div style="font-family:var(--font-ui);font-size:var(--text-sm);color:var(--color-text-muted)">
+      @NewGenCollections
+    </div>
+  </header>
+
+  <!-- Main tracker -->
+  <main class="tracker-content">
+
+    <div class="product-name" id="productName">2024 Panini Prizm NFL</div>
+
+    <div class="box-counter-display">
+      <div class="box-label">Box</div>
+      <div class="box-current" id="boxCurrent">1</div>
+      <div class="box-sep">of</div>
+      <div class="box-total" id="boxTotal">6</div>
+    </div>
+
+    <div class="box-track" id="boxTrack" role="list" aria-label="Box progress"></div>
+
+    <div class="packs-remaining">
+      Packs remaining in current box:&nbsp;
+      <span id="packsRemaining">24</span>
+    </div>
+
+  </main>
+
+  <!-- Controls: advance / retreat box (hidden in overlay mode) -->
+  <div class="controls" id="controls">
+    <button class="ctrl-btn" id="prevBoxBtn" aria-label="Previous box">◀ Prev Box</button>
+    <button class="ctrl-btn primary" id="nextBoxBtn" aria-label="Next box">Next Box ▶</button>
+  </div>
+
+  <script src="../js/teams.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/animations.js"></script>
+  <script>
+    /* ── URL param overrides ─────────────────────────────────────── */
+    const params = new URLSearchParams(window.location.search);
+    const overlayMode = params.has('overlay');
+
+    if (overlayMode) {
+      document.body.classList.add('overlay-mode');
+      document.getElementById('topBar').style.display  = 'none';
+      document.getElementById('controls').style.display = 'none';
+    }
+
+    /* ── DOM refs ───────────────────────────────────────────────── */
+    const productNameEl    = document.getElementById('productName');
+    const boxCurrentEl     = document.getElementById('boxCurrent');
+    const boxTotalEl       = document.getElementById('boxTotal');
+    const boxTrackEl       = document.getElementById('boxTrack');
+    const packsRemainingEl = document.getElementById('packsRemaining');
+    const prevBoxBtn       = document.getElementById('prevBoxBtn');
+    const nextBoxBtn       = document.getElementById('nextBoxBtn');
+
+    /* ── Render box track ───────────────────────────────────────── */
+    /** Renders box icons based on current state. */
+    const renderBoxes = (state) => {
+      /* URL params can override state for quick preview */
+      const currentBox  = parseInt(params.get('box')    || state.currentBox,  10);
+      const totalBoxes  = parseInt(params.get('total')  || state.totalBoxes,  10);
+      const totalPacks  = parseInt(params.get('packs')  || state.totalPacks,  10);
+      const currentPack = parseInt(params.get('pack')   || state.currentPack, 10);
+      const product     = params.get('product') || state.productName;
+      const packsLeft   = totalPacks - currentPack + 1;
+
+      productNameEl.textContent    = product;
+      boxCurrentEl.textContent     = currentBox;
+      boxTotalEl.textContent       = totalBoxes;
+      packsRemainingEl.textContent = Math.max(packsLeft, 0);
+
+      boxTrackEl.innerHTML = '';
+      const capped = Math.min(totalBoxes, 12);
+
+      for (let i = 1; i <= capped; i++) {
+        const icon = document.createElement('div');
+        icon.setAttribute('role', 'listitem');
+        icon.setAttribute('aria-label', `Box ${i} ${i < currentBox ? 'complete' : i === currentBox ? 'current' : 'upcoming'}`);
+
+        if (i < currentBox) {
+          icon.className = 'box-icon done';
+          icon.innerHTML = `
+            <div class="box-icon-symbol">📦</div>
+            <div class="box-icon-num">BOX ${i}</div>
+          `;
+        } else if (i === currentBox) {
+          icon.className = 'box-icon active';
+          icon.innerHTML = `
+            <div class="box-icon-symbol">📦</div>
+            <div class="box-icon-num">BOX ${i}</div>
+          `;
+        } else {
+          icon.className = 'box-icon upcoming';
+          icon.innerHTML = `
+            <div class="box-icon-symbol">📦</div>
+            <div class="box-icon-num">BOX ${i}</div>
+          `;
+        }
+        boxTrackEl.appendChild(icon);
+      }
+
+      /* If total > 12 add an overflow indicator */
+      if (totalBoxes > 12) {
+        const more = document.createElement('div');
+        more.className = 'box-icon upcoming';
+        more.innerHTML = `
+          <div class="box-icon-symbol" style="font-size:28px;font-family:var(--font-display);font-weight:900">+${totalBoxes - 12}</div>
+          <div class="box-icon-num">MORE</div>
+        `;
+        boxTrackEl.appendChild(more);
+      }
+    };
+
+    /* ── Controls ───────────────────────────────────────────────── */
+    nextBoxBtn.addEventListener('click', () => {
+      const state = NGCState.getState();
+      if (state.currentBox < state.totalBoxes) {
+        NGCState.setState({ currentBox: state.currentBox + 1, currentPack: 1 });
+        renderBoxes(NGCState.getState());
+      }
+    });
+
+    prevBoxBtn.addEventListener('click', () => {
+      const state = NGCState.getState();
+      if (state.currentBox > 1) {
+        NGCState.setState({ currentBox: state.currentBox - 1, currentPack: 1 });
+        renderBoxes(NGCState.getState());
+      }
+    });
+
+    /* ── Init and live sync ─────────────────────────────────────── */
+    renderBoxes(NGCState.getState());
+    NGCState.onStateChange(renderBoxes);
+  </script>
+</body>
+</html>

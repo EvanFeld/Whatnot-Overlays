@@ -1,0 +1,305 @@
+<!--
+  Widget: Hits Board
+  Description: Transparent persistent widget showing all hits from the current break,
+               newest first. Shows 4 at once; auto-scrolls through any extras.
+               Designed to be placed anywhere on stream as an OBS browser source.
+
+  OBS Setup:   Recommended size: 300 × 330px (header + 4 cards)
+               Background: transparent (default)
+               Place over any scene — pin to corner or sidebar.
+
+  Sync:        Updates in real time via NGCState / WebSocket bridge.
+               Run `node server.js` to sync across OBS browser sources.
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NGC — Hits Board</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    html, body {
+      width: 100%;
+      height: auto;
+      margin: 0;
+      padding: 0;
+      background: transparent;
+      overflow: visible;
+    }
+
+    /* Widget sizes to its content — transparent space below is invisible on stream */
+    .hits-widget {
+      width: 100%;
+      font-family: var(--font-display, 'Barlow Condensed', sans-serif);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    .hits-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      background: linear-gradient(135deg, rgba(8,8,12,0.96) 0%, rgba(0,48,135,0.25) 100%);
+      border-bottom: 2px solid #C8102E;
+    }
+
+    .hits-header-icon { font-size: 16px; line-height: 1; }
+
+    .hits-header-title {
+      flex: 1;
+      font-weight: 900;
+      font-size: 15px;
+      letter-spacing: 0.16em;
+      text-transform: uppercase;
+      color: #fff;
+    }
+
+    .hits-count-badge {
+      background: #C8102E;
+      color: #fff;
+      font-weight: 900;
+      font-size: 12px;
+      min-width: 22px;
+      height: 22px;
+      border-radius: 11px;
+      padding: 0 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    /* ── Viewport — fixed height clips the scrolling list ──────── */
+    .hits-viewport {
+      /* 4 cards × 72px each */
+      height: 288px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Empty state ───────────────────────────────────────────── */
+    .hits-empty {
+      padding: 20px 14px;
+      font-family: var(--font-ui, 'Barlow', sans-serif);
+      font-size: 13px;
+      color: rgba(255,255,255,0.35);
+      text-align: center;
+      background: rgba(8,8,12,0.88);
+    }
+
+    /* ── Scrolling list ────────────────────────────────────────── */
+    .hits-list {
+      display: flex;
+      flex-direction: column;
+      will-change: transform;
+    }
+
+    /* ── Individual hit card ───────────────────────────────────── */
+    .hit-card {
+      display: flex;
+      align-items: stretch;
+      background: rgba(8,8,12,0.92);
+      border-bottom: 1px solid rgba(255,255,255,0.07);
+      overflow: hidden;
+      flex-shrink: 0;
+      height: 72px;
+      animation: hitSlideIn 0.45s cubic-bezier(0.16,1,0.3,1) both;
+    }
+
+    @keyframes hitSlideIn {
+      from { opacity: 0; transform: translateX(20px); }
+      to   { opacity: 1; transform: translateX(0); }
+    }
+
+    /* Left team color bar */
+    .hit-accent {
+      width: 5px;
+      flex-shrink: 0;
+      background: var(--tc, #C8102E);
+    }
+
+    /* Text area */
+    .hit-body {
+      flex: 1;
+      padding: 10px 10px 10px 12px;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 3px;
+    }
+
+    .hit-player {
+      font-weight: 900;
+      font-size: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+      color: #fff;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.1;
+    }
+
+    .hit-card-name {
+      font-family: var(--font-ui, 'Barlow', sans-serif);
+      font-size: 13px;
+      color: rgba(255,255,255,0.55);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      line-height: 1.2;
+    }
+
+    .hit-team-tag {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--tc, rgba(255,255,255,0.35));
+      line-height: 1;
+    }
+
+    /* Value badge — right side */
+    .hit-value-wrap {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      padding: 0 12px 0 6px;
+    }
+
+    .hit-value-badge {
+      background: rgba(74,158,255,0.12);
+      border: 1px solid rgba(74,158,255,0.28);
+      color: #4A9EFF;
+      font-weight: 900;
+      font-size: 13px;
+      padding: 4px 9px;
+      border-radius: 20px;
+      white-space: nowrap;
+    }
+  </style>
+</head>
+<body>
+  <div class="hits-widget">
+    <div class="hits-header">
+      <span class="hits-header-icon">🔥</span>
+      <span class="hits-header-title">Hits This Break</span>
+      <span class="hits-count-badge" id="hitsCount">0</span>
+    </div>
+
+    <div class="hits-viewport" id="hitsViewport">
+      <div class="hits-empty" id="hitsEmpty">No hits yet…</div>
+      <div class="hits-list" id="hitsList"></div>
+    </div>
+  </div>
+
+  <script src="../js/teams.js"></script>
+  <script src="../js/state.js"></script>
+  <script>
+    const CARD_H     = 72;   // must match CSS .hit-card height
+    const MAX_VIS    = 4;    // how many cards show at once
+    const SCROLL_MS  = 2800; // ms per card advance when scrolling
+
+    const countEl    = document.getElementById('hitsCount');
+    const listEl     = document.getElementById('hitsList');
+    const emptyEl    = document.getElementById('hitsEmpty');
+    const viewportEl = document.getElementById('hitsViewport');
+
+    let scrollTimer  = null;
+    let scrollStep   = 0;
+
+    /* ── Helpers ───────────────────────────────────────────────── */
+    const teamLookup = (id) => {
+      if (!id || typeof NFL_TEAMS === 'undefined') return {};
+      return NFL_TEAMS.find(t => t.id === id) || {};
+    };
+
+    /* ── Render ────────────────────────────────────────────────── */
+    const render = (state) => {
+      const s    = state || NGCState.getState();
+      const hits = s.recentHits || [];
+
+      countEl.textContent = hits.length;
+
+      if (hits.length === 0) {
+        emptyEl.style.display = 'block';
+        listEl.innerHTML      = '';
+        stopScroll();
+        return;
+      }
+
+      emptyEl.style.display = 'none';
+
+      /* Rebuild list — newest first (index 0 = newest) */
+      listEl.innerHTML = '';
+      hits.forEach((hit, i) => {
+        const t     = teamLookup(hit.team);
+        const color = t.primaryColor || '#C8102E';
+        const abbr  = t.abbreviation || (hit.team || '').toUpperCase();
+
+        const card  = document.createElement('div');
+        card.className = 'hit-card';
+        card.style.setProperty('--tc', color);
+        card.style.animationDelay = `${i * 55}ms`;
+
+        card.innerHTML = `
+          <div class="hit-accent"></div>
+          <div class="hit-body">
+            <div class="hit-player">${esc(hit.player || 'Unknown Player')}</div>
+            <div class="hit-card-name">${esc(hit.cardName || hit.card || 'Card')}</div>
+            ${abbr ? `<div class="hit-team-tag">${esc(abbr)}</div>` : ''}
+          </div>
+          ${hit.value
+            ? `<div class="hit-value-wrap"><span class="hit-value-badge">~$${esc(String(hit.value))}</span></div>`
+            : ''}
+        `;
+        listEl.appendChild(card);
+      });
+
+      /* Reset scroll position, then restart if needed */
+      stopScroll();
+      listEl.style.transform = 'translateY(0)';
+      if (hits.length > MAX_VIS) startScroll(hits.length);
+    };
+
+    /* ── Auto-scroll: step one card down, wrap at bottom ──────── */
+    const startScroll = (total) => {
+      scrollStep = 0;
+      const maxStep = total - MAX_VIS;
+
+      scrollTimer = setInterval(() => {
+        scrollStep++;
+        if (scrollStep > maxStep) {
+          listEl.style.transition = 'none';
+          listEl.style.transform  = 'translateY(0)';
+          scrollStep = 0;
+          void listEl.offsetHeight;
+          return;
+        }
+        listEl.style.transition = `transform 0.55s cubic-bezier(0.16,1,0.3,1)`;
+        listEl.style.transform  = `translateY(-${scrollStep * cardH}px)`;
+      }, SCROLL_MS);
+    };
+
+    const stopScroll = () => {
+      clearInterval(scrollTimer);
+      scrollTimer = null;
+      scrollStep  = 0;
+    };
+
+    /* ── XSS guard for inner HTML ──────────────────────────────── */
+    const esc = (str) => str
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+
+    /* ── Init ──────────────────────────────────────────────────── */
+    render(NGCState.getState());
+    NGCState.onStateChange(render);
+  </script>
+</body>
+</html>

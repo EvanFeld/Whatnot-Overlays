@@ -1,0 +1,585 @@
+<!--
+/**
+ * Scene: Team Assignment Board
+ * Description: Full-screen 8x4 grid of all 32 NFL teams. Click an unclaimed
+ *              card to claim it for a viewer. Click a claimed card to edit or
+ *              release it. State syncs via localStorage.
+ * OBS Setup:   1920x1080 Browser Source. Interact via "Interact" button in OBS
+ *              or open in a browser window for click-to-claim functionality.
+ * URL Params:  None (reads from localStorage via state.js)
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=1920">
+  <title>NGC — Team Board</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    body[data-scene="team-board"] {
+      background: var(--color-dark-bg);
+      display: flex;
+      flex-direction: column;
+      width: 1920px;
+      height: 1080px;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Top Bar ─────────────────────────────────────────────────── */
+    .top-bar {
+      height: var(--topbar-height);
+      background: linear-gradient(90deg, #0a0a0f 0%, var(--color-blue-dim) 40%, #0a0a0f 100%);
+      border-bottom: 2px solid var(--color-red);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-8);
+      flex-shrink: 0;
+      position: relative;
+    }
+    .top-bar::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: repeating-linear-gradient(
+        -45deg, transparent, transparent 18px,
+        rgba(200,16,46,0.04) 18px, rgba(200,16,46,0.04) 20px
+      );
+      pointer-events: none;
+    }
+    .top-brand {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-xl);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-white);
+    }
+    .top-brand span { color: var(--color-red); }
+    .top-break-num {
+      position: absolute;
+      left: 50%;
+      transform: translateX(-50%);
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-3xl);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--color-gold);
+      text-shadow: 0 0 20px rgba(74,158,255,0.5);
+      white-space: nowrap;
+    }
+    .top-social {
+      font-family: var(--font-ui);
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+    }
+
+
+    /* ── Grid Container ──────────────────────────────────────────── */
+    .grid-wrapper {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: var(--space-4) var(--space-8);
+      position: relative;
+      z-index: 1;
+    }
+
+    .team-grid {
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(4, 1fr);
+      gap: var(--space-3);
+      width: 100%;
+      flex: 1;
+    }
+
+    /* ── Team Card ───────────────────────────────────────────────── */
+    .team-card {
+      position: relative;
+      border-radius: var(--radius-lg);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: var(--space-3) var(--space-2);
+      cursor: pointer;
+      overflow: hidden;
+      transition: transform var(--dur-fast) var(--ease-out-back),
+                  box-shadow var(--dur-normal) ease,
+                  opacity var(--dur-fast) ease;
+      border: 2px solid rgba(255,255,255,0.1);
+      animation: cardPulse 2.5s ease-in-out infinite;
+      outline: none;
+    }
+    .team-card:focus-visible {
+      outline: 2px solid var(--color-gold);
+      outline-offset: 2px;
+    }
+    .team-card:hover:not(.claimed) {
+      transform: scale(1.05);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      animation: none;
+    }
+    .team-card.claimed {
+      animation: none;
+      cursor: pointer;
+      opacity: 0.45;
+    }
+    .team-card.claimed:hover {
+      opacity: 0.7;
+      transform: scale(1.03);
+      box-shadow: 0 6px 24px rgba(74,158,255,0.25);
+    }
+    .team-card.claimed .card-logo { filter: grayscale(0.3); }
+
+    .card-bg {
+      position: absolute;
+      inset: 0;
+      opacity: 0.85;
+    }
+    .card-logo {
+      position: relative;
+      z-index: 1;
+      width: 72px;
+      height: 72px;
+      object-fit: contain;
+    }
+    .card-logo-fallback {
+      position: relative;
+      z-index: 1;
+      width: 72px;
+      height: 72px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-2xl);
+      color: rgba(255,255,255,0.9);
+    }
+    .card-name {
+      position: relative;
+      z-index: 1;
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-sm);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: rgba(255,255,255,0.95);
+      text-align: center;
+      line-height: 1.1;
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+    }
+
+    /* Claimed overlay */
+    .claimed-overlay {
+      position: absolute;
+      inset: 0;
+      z-index: 2;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-1);
+      background: rgba(0,0,0,0.55);
+      border-radius: var(--radius-lg);
+    }
+    .claimed-check {
+      font-size: 28px;
+      color: var(--color-gold);
+      text-shadow: var(--glow-gold);
+    }
+    .claimed-name {
+      font-family: var(--font-display);
+      font-weight: 800;
+      font-size: var(--text-base);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-gold);
+      text-shadow: 0 1px 4px rgba(0,0,0,0.8);
+      max-width: 90%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    /* Claim animation */
+    @keyframes claimPop {
+      0%   { transform: scale(1); }
+      40%  { transform: scale(0.88); opacity: 0.8; }
+      100% { transform: scale(1); opacity: 0.45; }
+    }
+    .team-card.claim-anim {
+      animation: claimPop 0.5s var(--ease-out-back) forwards;
+    }
+
+    /* ── Bottom Counter ──────────────────────────────────────────── */
+    .bottom-counter {
+      text-align: center;
+      padding: var(--space-3) 0 var(--space-2);
+      flex-shrink: 0;
+    }
+    .teams-left-big {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-3xl);
+      text-transform: uppercase;
+      letter-spacing: 0.12em;
+      color: var(--color-text-muted);
+    }
+    .teams-left-big span {
+      color: var(--color-red);
+      font-size: var(--text-4xl);
+      margin: 0 var(--space-2);
+      text-shadow: var(--glow-red);
+    }
+
+    /* ── Shared Modal Styles ─────────────────────────────────────── */
+    .modal-backdrop {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.75);
+      z-index: 100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity var(--dur-normal) ease;
+    }
+    .modal-backdrop.open {
+      opacity: 1;
+      pointer-events: all;
+    }
+    .modal {
+      background: var(--color-surface);
+      border: 2px solid var(--color-gold);
+      border-radius: var(--radius-xl);
+      padding: var(--space-10) var(--space-12);
+      min-width: 480px;
+      text-align: center;
+      box-shadow: var(--glow-gold), 0 20px 80px rgba(0,0,0,0.8);
+      animation: popIn var(--dur-slow) var(--ease-out-back);
+    }
+    .modal-team-logo {
+      width: 100px;
+      height: 100px;
+      object-fit: contain;
+      margin-bottom: var(--space-4);
+    }
+    .modal-team-name {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-3xl);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--color-white);
+      margin-bottom: var(--space-6);
+    }
+    .modal-current-owner {
+      font-family: var(--font-ui);
+      font-size: var(--text-sm);
+      color: var(--color-text-muted);
+      margin-bottom: var(--space-4);
+      font-style: italic;
+    }
+    .modal-input {
+      width: 100%;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      font-family: var(--font-ui);
+      font-size: var(--text-lg);
+      color: var(--color-white);
+      text-align: center;
+      outline: none;
+      transition: border-color var(--dur-fast) ease;
+      margin-bottom: var(--space-6);
+    }
+    .modal-input:focus {
+      border-color: var(--color-gold);
+      box-shadow: 0 0 0 2px rgba(74,158,255,0.2);
+    }
+    .modal-input::placeholder { color: var(--color-text-muted); }
+    .modal-buttons {
+      display: flex;
+      gap: var(--space-4);
+      justify-content: center;
+    }
+    .btn {
+      font-family: var(--font-display);
+      font-weight: 700;
+      font-size: var(--text-base);
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      padding: var(--space-3) var(--space-8);
+      border-radius: var(--radius-md);
+      border: none;
+      cursor: pointer;
+      transition: transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
+    }
+    .btn:focus-visible { outline: 2px solid var(--color-gold); outline-offset: 3px; }
+    .btn:hover { transform: scale(1.04); }
+    .btn-primary {
+      background: var(--color-gold);
+      color: var(--color-white);
+      box-shadow: 0 4px 16px rgba(74,158,255,0.3);
+    }
+    .btn-secondary {
+      background: var(--color-surface-2);
+      color: var(--color-text-muted);
+      border: 1px solid var(--color-border);
+    }
+    .btn-ghost {
+      background: transparent;
+      color: var(--color-text-muted);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .btn-ghost:hover { background: rgba(255,255,255,0.06); }
+  </style>
+</head>
+<body data-scene="team-board" class="scanline">
+
+  <!-- Top Bar -->
+  <header class="top-bar">
+    <div class="top-brand">NEW GEN <span>COLLECTIONS</span></div>
+    <div class="top-break-num" id="breakNum">BREAK #1</div>
+    <div class="top-social">@NewGenCollections</div>
+  </header>
+
+  <!-- Grid -->
+  <main class="grid-wrapper">
+    <div class="team-grid" id="teamGrid" role="list" aria-label="NFL Team Selection Grid"></div>
+
+    <!-- Teams Left Counter -->
+    <div class="bottom-counter">
+      <div class="teams-left-big">
+        TEAMS LEFT: <span id="teamsLeftCount">32</span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Claim Modal (unclaimed teams) -->
+  <div class="modal-backdrop" id="modalBackdrop" role="dialog" aria-modal="true" aria-labelledby="modalTeamName">
+    <div class="modal">
+      <img id="modalLogo" class="modal-team-logo" src="" alt="">
+      <div id="modalTeamName" class="modal-team-name"></div>
+      <input
+        type="text"
+        id="modalInput"
+        class="modal-input"
+        placeholder="Enter viewer/buyer name…"
+        maxlength="32"
+        autocomplete="off"
+      >
+      <div class="modal-buttons">
+        <button class="btn btn-ghost" id="modalCancel">Cancel</button>
+        <button class="btn btn-primary" id="modalConfirm">Claim Team</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Edit Modal (claimed teams) -->
+  <div class="modal-backdrop" id="editModalBackdrop" role="dialog" aria-modal="true" aria-labelledby="editModalTeamName">
+    <div class="modal">
+      <img id="editModalLogo" class="modal-team-logo" src="" alt="">
+      <div id="editModalTeamName" class="modal-team-name"></div>
+      <div id="editModalCurrentOwner" class="modal-current-owner"></div>
+      <input
+        type="text"
+        id="editModalInput"
+        class="modal-input"
+        placeholder="Enter new name…"
+        maxlength="32"
+        autocomplete="off"
+      >
+      <div class="modal-buttons">
+        <button class="btn btn-ghost"      id="editModalCancel">Cancel</button>
+        <button class="btn btn-secondary"  id="editModalRelease">Release Slot</button>
+        <button class="btn btn-primary"    id="editModalUpdate">Update Name</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="../js/teams.js"></script>
+  <script src="../js/state.js"></script>
+  <script src="../js/animations.js"></script>
+  <script>
+    let pendingTeamId  = null;
+    let editingTeamId  = null;
+
+    /* ── DOM refs ──────────────────────────────────────────────── */
+    const gridEl            = document.getElementById('teamGrid');
+    const teamsLeftEl       = document.getElementById('teamsLeftCount');
+    const breakNumEl        = document.getElementById('breakNum');
+
+    const modalBackdrop     = document.getElementById('modalBackdrop');
+    const modalLogo         = document.getElementById('modalLogo');
+    const modalTeamName     = document.getElementById('modalTeamName');
+    const modalInput        = document.getElementById('modalInput');
+    const modalCancel       = document.getElementById('modalCancel');
+    const modalConfirm      = document.getElementById('modalConfirm');
+
+    const editModalBackdrop     = document.getElementById('editModalBackdrop');
+    const editModalLogo         = document.getElementById('editModalLogo');
+    const editModalTeamName     = document.getElementById('editModalTeamName');
+    const editModalCurrentOwner = document.getElementById('editModalCurrentOwner');
+    const editModalInput        = document.getElementById('editModalInput');
+    const editModalCancel       = document.getElementById('editModalCancel');
+    const editModalRelease      = document.getElementById('editModalRelease');
+    const editModalUpdate       = document.getElementById('editModalUpdate');
+
+    /* ── Grid render ───────────────────────────────────────────── */
+    const renderGrid = () => {
+      const state   = NGCState.getState();
+      const teams   = (state.teams && state.teams.length) ? state.teams : NFL_TEAMS;
+      const unclaimed = teams.filter(t => !t.claimed).length;
+
+      teamsLeftEl.textContent = unclaimed;
+      breakNumEl.textContent  = `BREAK #${state.breakNumber}`;
+      gridEl.innerHTML = '';
+
+      teams.forEach(team => {
+        const card = document.createElement('div');
+        card.className = 'team-card' + (team.claimed ? ' claimed' : '');
+        card.setAttribute('role', 'listitem');
+        card.setAttribute('tabindex', '0');
+        card.dataset.teamId = team.id;
+
+        if (team.claimed) {
+          card.setAttribute('aria-label', `Edit ${team.name} (claimed by ${team.claimedBy || 'unknown'})`);
+        } else {
+          card.setAttribute('aria-label', `Claim ${team.name}`);
+        }
+
+        const claimedHtml = team.claimed ? `
+          <div class="claimed-overlay">
+            <div class="claimed-check">✓</div>
+            <div class="claimed-name">${team.claimedBy || 'Claimed'}</div>
+          </div>` : '';
+
+        card.innerHTML = `
+          <div class="card-bg" style="background:${team.primaryColor || '#1a1a28'}"></div>
+          <img class="card-logo" src="../${team.logoPath}" alt="${team.name}"
+               onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+          <div class="card-logo-fallback" style="display:none">${team.abbreviation}</div>
+          <div class="card-name">${team.name}</div>
+          ${claimedHtml}
+        `;
+
+        if (team.claimed) {
+          card.addEventListener('click', () => {
+            const fresh = (NGCState.getState().teams || []).find(t => t.id === team.id) || team;
+            openEditModal(fresh);
+          });
+          card.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              const fresh = (NGCState.getState().teams || []).find(t => t.id === team.id) || team;
+              openEditModal(fresh);
+            }
+          });
+        } else {
+          card.addEventListener('click', () => openModal(team));
+          card.addEventListener('keydown', e => {
+            if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openModal(team); }
+          });
+        }
+
+        gridEl.appendChild(card);
+      });
+    };
+
+    /* ── Claim modal ───────────────────────────────────────────── */
+    const openModal = (team) => {
+      pendingTeamId = team.id;
+      modalLogo.src = `../${team.logoPath}`;
+      modalLogo.alt = team.name;
+      modalTeamName.textContent = team.name;
+      modalInput.value = '';
+      modalBackdrop.classList.add('open');
+      setTimeout(() => modalInput.focus(), 50);
+    };
+
+    const closeModal = () => {
+      modalBackdrop.classList.remove('open');
+      pendingTeamId = null;
+    };
+
+    const confirmClaim = () => {
+      const name = modalInput.value.trim();
+      if (!name || !pendingTeamId) return;
+      const card = gridEl.querySelector(`[data-team-id="${pendingTeamId}"]`);
+      if (card) card.classList.add('claim-anim');
+      NGCState.claimTeam(pendingTeamId, name);
+      closeModal();
+      setTimeout(renderGrid, 500);
+    };
+
+    modalCancel.addEventListener('click', closeModal);
+    modalConfirm.addEventListener('click', confirmClaim);
+    modalInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  confirmClaim();
+      if (e.key === 'Escape') closeModal();
+    });
+    modalBackdrop.addEventListener('click', e => {
+      if (e.target === modalBackdrop) closeModal();
+    });
+
+    /* ── Edit modal ────────────────────────────────────────────── */
+    const openEditModal = (team) => {
+      editingTeamId = team.id;
+      editModalLogo.src = `../${team.logoPath}`;
+      editModalLogo.alt = team.name;
+      editModalTeamName.textContent = `Edit — ${team.name}`;
+      editModalCurrentOwner.textContent = `Currently claimed by: ${team.claimedBy || 'Unknown'}`;
+      editModalInput.value = team.claimedBy || '';
+      editModalBackdrop.classList.add('open');
+      setTimeout(() => editModalInput.focus(), 50);
+    };
+
+    const closeEditModal = () => {
+      editModalBackdrop.classList.remove('open');
+      editingTeamId = null;
+    };
+
+    const confirmUpdate = () => {
+      const name = editModalInput.value.trim();
+      if (!name || !editingTeamId) return;
+      NGCState.claimTeam(editingTeamId, name);
+      closeEditModal();
+      setTimeout(renderGrid, 150);
+    };
+
+    const confirmRelease = () => {
+      if (!editingTeamId) return;
+      NGCState.releaseTeam(editingTeamId);
+      closeEditModal();
+      setTimeout(renderGrid, 150);
+    };
+
+    editModalCancel.addEventListener('click', closeEditModal);
+    editModalUpdate.addEventListener('click', confirmUpdate);
+    editModalRelease.addEventListener('click', confirmRelease);
+    editModalInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter')  confirmUpdate();
+      if (e.key === 'Escape') closeEditModal();
+    });
+    editModalBackdrop.addEventListener('click', e => {
+      if (e.target === editModalBackdrop) closeEditModal();
+    });
+
+    /* ── Live sync + init ──────────────────────────────────────── */
+    NGCState.onStateChange(renderGrid);
+    renderGrid();
+  </script>
+</body>
+</html>

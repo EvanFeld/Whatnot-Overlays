@@ -1,0 +1,313 @@
+<!--
+/**
+ * Scene: Hit Alert Overlay
+ * Description: Transparent overlay that animates a gold "HIT PULLED!" panel in
+ *              from the bottom-right. Stays for 5 seconds then exits. Listens to
+ *              localStorage changes (state.js recentHits) for live triggering,
+ *              and also supports URL param trigger for testing.
+ * OBS Setup:   1920x1080 Browser Source, positioned over main-break scene.
+ *              Enable "Shutdown source when not visible" is NOT recommended —
+ *              keep it always active so localStorage events fire immediately.
+ * URL Params:  ?player=Patrick+Mahomes
+ *              ?card=Auto+Prizm+%2F10
+ *              ?team=kc
+ *              ?value=450
+ *              ?trigger=1  — auto-fires on load (for testing)
+ */
+-->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>NGC — Hit Alert</title>
+  <link rel="stylesheet" href="../css/theme.css">
+  <style>
+    html { background: transparent; }
+    body[data-scene="hit-alert"] {
+      background: transparent;
+      width: 100vw;
+      height: 100vh;
+      overflow: hidden;
+      position: relative;
+    }
+
+    /* ── Alert panel ─────────────────────────────────────────────── */
+    #alertPanel {
+      position: absolute;
+      bottom: 16px;
+      right: calc(-1 * min(480px, 85vw) - 20px); /* starts off-screen */
+      width: min(480px, 85vw);
+      background: linear-gradient(135deg, #0a0a0f 0%, #1a1208 100%);
+      border: 2px solid var(--color-gold);
+      border-radius: var(--radius-xl);
+      overflow: hidden;
+      box-shadow: var(--glow-gold), 0 20px 80px rgba(0,0,0,0.8);
+      transition: right 0.6s cubic-bezier(0.16,1,0.3,1),
+                  opacity 0.4s ease;
+      opacity: 0;
+    }
+    #alertPanel.active {
+      right: 16px;
+      opacity: 1;
+    }
+    #alertPanel.exiting {
+      right: calc(-1 * min(480px, 85vw) - 20px);
+      opacity: 0;
+    }
+
+    /* Shimmer top strip */
+    .alert-shimmer-bar {
+      height: 4px;
+      background: linear-gradient(90deg, var(--color-gold-dim), var(--color-gold), var(--color-gold-dim));
+      background-size: 200% 100%;
+      animation: shimmer 1.5s linear infinite;
+    }
+
+    /* Header: 🔥 HIT PULLED! */
+    .alert-header {
+      background: linear-gradient(90deg, rgba(255,215,0,0.15), rgba(255,215,0,0.05));
+      padding: var(--space-4) var(--space-6);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      border-bottom: 1px solid rgba(255,215,0,0.2);
+    }
+    .alert-header-icon {
+      font-size: 28px;
+      animation: pulseGold 1s ease-in-out infinite;
+    }
+    .alert-header-text {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-xl);
+      text-transform: uppercase;
+      letter-spacing: 0.15em;
+      color: var(--color-gold);
+      text-shadow: var(--glow-gold);
+    }
+
+    /* Body */
+    .alert-body {
+      display: flex;
+      align-items: center;
+      gap: var(--space-5);
+      padding: var(--space-5) var(--space-6);
+    }
+
+    /* Team logo */
+    .alert-team-logo {
+      width: 80px;
+      height: 80px;
+      object-fit: contain;
+      flex-shrink: 0;
+      filter: drop-shadow(0 4px 12px rgba(0,0,0,0.6));
+    }
+    .alert-team-fallback {
+      width: 80px;
+      height: 80px;
+      border-radius: var(--radius-md);
+      background: var(--color-surface);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-xl);
+      color: var(--color-text-muted);
+      flex-shrink: 0;
+    }
+
+    /* Text stack */
+    .alert-text {
+      flex: 1;
+      min-width: 0;
+    }
+    .alert-player {
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-3xl);
+      text-transform: uppercase;
+      letter-spacing: 0.02em;
+      color: var(--color-white);
+      line-height: 1;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      animation: fadeRight var(--dur-slow) var(--ease-out-expo) both;
+    }
+    .alert-card {
+      font-family: var(--font-ui);
+      font-size: var(--text-base);
+      color: var(--color-text-muted);
+      margin-top: var(--space-2);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      animation: fadeRight var(--dur-slow) 0.1s var(--ease-out-expo) both;
+    }
+    .alert-value {
+      display: inline-block;
+      margin-top: var(--space-3);
+      background: var(--color-gold);
+      color: #000;
+      font-family: var(--font-display);
+      font-weight: 900;
+      font-size: var(--text-lg);
+      letter-spacing: 0.06em;
+      padding: var(--space-1) var(--space-4);
+      border-radius: var(--radius-full);
+      animation: popIn var(--dur-slow) 0.2s var(--ease-out-back) both;
+    }
+
+    /* Progress bar (5s auto-dismiss) */
+    .alert-progress {
+      height: 3px;
+      background: rgba(255,215,0,0.15);
+    }
+    .alert-progress-fill {
+      height: 100%;
+      background: var(--color-gold);
+      width: 100%;
+      transform-origin: left;
+      transition: transform linear;
+    }
+  </style>
+</head>
+<body data-scene="hit-alert">
+
+  <div id="alertPanel" role="alert" aria-live="assertive" aria-atomic="true">
+    <div class="alert-shimmer-bar"></div>
+
+    <div class="alert-header">
+      <div class="alert-header-icon" aria-hidden="true">🔥</div>
+      <div class="alert-header-text">Hit Pulled!</div>
+    </div>
+
+    <div class="alert-body">
+      <img id="alertTeamLogo" class="alert-team-logo" src="" alt=""
+           onerror="this.style.display='none';this.nextElementSibling.style.display='flex'">
+      <div id="alertTeamFallback" class="alert-team-fallback" style="display:none">—</div>
+
+      <div class="alert-text">
+        <div class="alert-player"  id="alertPlayer">—</div>
+        <div class="alert-card"    id="alertCard">—</div>
+        <div class="alert-value"   id="alertValue" style="display:none">—</div>
+      </div>
+    </div>
+
+    <div class="alert-progress">
+      <div class="alert-progress-fill" id="alertProgress"></div>
+    </div>
+  </div>
+
+  <script src="../js/teams.js"></script>
+  <script src="../js/state.js"></script>
+  <script>
+    const DISPLAY_DURATION = 5000; /* ms */
+
+    const panelEl    = document.getElementById('alertPanel');
+    const playerEl   = document.getElementById('alertPlayer');
+    const cardEl     = document.getElementById('alertCard');
+    const valueEl    = document.getElementById('alertValue');
+    const logoEl     = document.getElementById('alertTeamLogo');
+    const fallbackEl = document.getElementById('alertTeamFallback');
+    const progressEl = document.getElementById('alertProgress');
+
+    let dismissTimer  = null;
+    let lastHitTime   = 0;
+
+    /** Fills the alert panel with hit data and animates it in. */
+    const showAlert = ({ player, card, team, value }) => {
+      /* Prevent duplicate fires within 500ms */
+      const now = Date.now();
+      if (now - lastHitTime < 500) return;
+      lastHitTime = now;
+
+      clearTimeout(dismissTimer);
+
+      /* Populate content */
+      playerEl.textContent = player || 'Unknown Player';
+      cardEl.textContent   = card   || 'Card';
+
+      if (value) {
+        valueEl.textContent   = `~$${value}`;
+        valueEl.style.display = 'inline-block';
+      } else {
+        valueEl.style.display = 'none';
+      }
+
+      /* Team logo */
+      const teamData = typeof NFL_TEAMS !== 'undefined'
+        ? NFL_TEAMS.find(t => t.id === team)
+        : null;
+
+      if (teamData) {
+        logoEl.src = `../${teamData.logoPath}`;
+        logoEl.alt = teamData.name;
+        logoEl.style.display = '';
+        fallbackEl.style.display = 'none';
+      } else if (team) {
+        fallbackEl.textContent   = team.toUpperCase().slice(0, 3);
+        fallbackEl.style.display = 'flex';
+        logoEl.style.display     = 'none';
+      } else {
+        fallbackEl.textContent   = '🔥';
+        fallbackEl.style.display = 'flex';
+        logoEl.style.display     = 'none';
+      }
+
+      /* Slide in */
+      panelEl.classList.remove('exiting');
+      void panelEl.offsetWidth;
+      panelEl.classList.add('active');
+
+      /* Progress bar drain */
+      progressEl.style.transition = 'none';
+      progressEl.style.transform  = 'scaleX(1)';
+      void progressEl.offsetWidth;
+      progressEl.style.transition = `transform ${DISPLAY_DURATION}ms linear`;
+      progressEl.style.transform  = 'scaleX(0)';
+
+      /* Play sound */
+      try {
+        const audio = new Audio('../assets/sounds/hit-alert.mp3');
+        audio.volume = 0.7;
+        audio.play().catch(() => {});
+      } catch {}
+
+      /* Auto dismiss */
+      dismissTimer = setTimeout(hideAlert, DISPLAY_DURATION);
+    };
+
+    /** Animates the panel out. */
+    const hideAlert = () => {
+      panelEl.classList.remove('active');
+      panelEl.classList.add('exiting');
+      setTimeout(() => panelEl.classList.remove('exiting'), 700);
+    };
+
+    /* ── URL param trigger (for testing) ────────────────────────── */
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('trigger') === '1') {
+      setTimeout(() => showAlert({
+        player: params.get('player') || 'Patrick Mahomes',
+        card:   params.get('card')   || 'Auto Prizm /10',
+        team:   params.get('team')   || 'kc',
+        value:  params.get('value')  || '450',
+      }), 500);
+    }
+
+    /* ── Live trigger via localStorage state changes ─────────────── */
+    let lastHitTimestamp = 0;
+
+    NGCState.onStateChange((newState) => {
+      if (!newState.recentHits || newState.recentHits.length === 0) return;
+      const latest = newState.recentHits[0];
+      if (!latest || latest.timestamp === lastHitTimestamp) return;
+      lastHitTimestamp = latest.timestamp;
+      showAlert(latest);
+    });
+  </script>
+</body>
+</html>
