@@ -15,6 +15,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=1920">
   <title>NGC — Team Board</title>
+  <script src="/config.js"></script>
   <link rel="stylesheet" href="../css/theme.css">
   <style>
     body[data-scene="team-board"] {
@@ -350,9 +351,9 @@
 
   <!-- Top Bar -->
   <header class="top-bar">
-    <div class="top-brand">NEW GEN <span>COLLECTIONS</span></div>
+    <div id="tbBrand" class="top-brand">YOUR <span>BRAND</span></div>
     <div class="top-break-num" id="breakNum">BREAK #1</div>
-    <div class="top-social">@NewGenCollections</div>
+    <div id="tbHandle" class="top-social">@YourHandle</div>
   </header>
 
   <!-- Grid -->
@@ -412,6 +413,22 @@
   <script src="../js/teams.js"></script>
   <script src="../js/state.js"></script>
   <script src="../js/animations.js"></script>
+  <script>
+    /* ── Apply brand config ──────────────────────────────────────── */
+    (function() {
+      const cfg = window.OVERLAY_CONFIG;
+      if (!cfg) return;
+      const brand = document.getElementById('tbBrand');
+      if (brand) {
+        const parts = cfg.brandName.split(' ');
+        const last  = parts.pop();
+        brand.innerHTML = (parts.join(' ') + ' <span>' + last + '</span>').toUpperCase();
+      }
+      const handle = document.getElementById('tbHandle');
+      const h = cfg.socialHandles || {};
+      if (handle) handle.textContent = h.twitch || h.whatnot || cfg.brandName;
+    })();
+  </script>
   <script>
     let pendingTeamId  = null;
     let editingTeamId  = null;

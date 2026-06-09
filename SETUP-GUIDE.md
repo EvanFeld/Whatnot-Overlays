@@ -186,4 +186,4 @@ In OBS, for each scene you want to use:
 
 ---
 
-*Need help? Contact the seller who provided this package.*
+

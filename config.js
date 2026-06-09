@@ -10,24 +10,24 @@
 window.OVERLAY_CONFIG = {
 
   // ── Your brand ─────────────────────────────────────────────────────────────
-  brandName:   'New Gen Collections',   // Full channel / business name
-  brandShort:  'NGC',                   // Short abbreviation (used in small spaces)
-  brandSlogan: "You miss 100% of the rips you don't take.",
+  brandName:   'Your Brand Name',        // Full channel / business name
+  brandShort:  'YBN',                    // Short abbreviation (used in small spaces)
+  brandSlogan: 'Your slogan goes here.', // Shown on BRB, Starting Soon, and Offline screens
 
   // ── Accent colors (hex) ────────────────────────────────────────────────────
-  // accentColorPrimary   → borders, badges, alerts (currently red)
-  // accentColorSecondary → backgrounds, gradients  (currently blue)
-  accentColorPrimary:   '#C8102E',
-  accentColorSecondary: '#003087',
+  // accentColorPrimary   → borders, badges, alerts
+  // accentColorSecondary → backgrounds, gradients
+  accentColorPrimary:   '#C8102E',       // e.g. '#FF5500'  — use any 6-digit hex color
+  accentColorSecondary: '#003087',       // e.g. '#1a1a2e'
 
   // ── Social handles ─────────────────────────────────────────────────────────
   // Include the @ symbol where it applies. Leave empty string '' to hide.
   socialHandles: {
-    twitch:    '@NewGenCollections',
-    instagram: '@NewGenCollections',
-    youtube:   'NewGenCollections',
-    tiktok:    '@NewGenCollections',
-    whatnot:   'NewGenCollections',
+    twitch:    '@YourHandle',
+    instagram: '@YourHandle',
+    youtube:   'YourChannel',            // YouTube usually has no @
+    tiktok:    '@YourHandle',
+    whatnot:   'YourHandle',
   },
 
   // ── Break defaults ─────────────────────────────────────────────────────────
@@ -39,7 +39,7 @@ window.OVERLAY_CONFIG = {
   // Path from the server root. Place your logo file in assets/logo/ and update
   // this value. Supported formats: .svg, .png, .jpg
   // Recommended size: at least 300px wide, transparent background.
-  logoPath: '/assets/logo/newgen-logo.svg',
+  logoPath: '/assets/logo/placeholder-logo.svg',
 
 };
 
